@@ -34,6 +34,8 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingKey, setIsGeneratingKey] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isDocExpanded, setIsDocExpanded] = useState(false);
+  const [isDocHighlighted, setIsDocHighlighted] = useState(false);
   const [userData, setUserData] = useState<UserData>({
     apiKey: '',
     stats: {
@@ -242,12 +244,7 @@ export default function DashboardPage() {
                 <span className="mr-4 text-gray-600">
                   Welcome, {session?.user?.name || session?.user?.email || 'User'}
                 </span>
-                <Link 
-                  href="/documentation"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium mr-2"
-                >
-                  API Documentation
-                </Link>
+                
                 <button 
                   onClick={() => router.push('/api/auth/signout')}
                   className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-700 text-sm font-medium"
@@ -257,12 +254,6 @@ export default function DashboardPage() {
               </>
             ) : (
               <>
-                <Link 
-                  href="/documentation"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium mr-2"
-                >
-                  API Documentation
-                </Link>
                 <button 
                   onClick={() => router.push('/auth/signin')}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium"
@@ -357,9 +348,19 @@ export default function DashboardPage() {
                     Your dashboard will show real-time statistics once you start using your API key. Use the API key shown below to make requests to our API.
                   </p>
                   <p className="mt-3 text-sm md:mt-0 md:ml-6">
-                    <a href="https://docs.circuit.com" className="whitespace-nowrap font-medium text-blue-700 hover:text-blue-600">
+                    <button 
+                      onClick={() => {
+                        setIsDocExpanded(true);
+                        setIsDocHighlighted(true);
+                        // Scroll to the documentation section
+                        document.getElementById('api-documentation')?.scrollIntoView({ behavior: 'smooth' });
+                        // Remove highlight after animation completes
+                        setTimeout(() => setIsDocHighlighted(false), 2000);
+                      }}
+                      className="whitespace-nowrap font-medium text-blue-700 hover:text-blue-600"
+                    >
                       View API docs <span aria-hidden="true">&rarr;</span>
-                    </a>
+                    </button>
                   </p>
                 </div>
               </div>
@@ -426,33 +427,71 @@ export default function DashboardPage() {
           </div>
           
           {/* API Documentation */}
-          <div className="mb-8 bg-white shadow overflow-hidden sm:rounded-lg">
-            <div className="px-4 py-5 sm:px-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
-                API Documentation
-              </h3>
-              <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                Learn how to integrate Circuit's matching API into your application.
-              </p>
+          <div 
+            id="api-documentation" 
+            className={`mb-8 bg-white shadow overflow-hidden sm:rounded-lg transition-all duration-500 ${
+              isDocHighlighted ? 'ring-2 ring-indigo-500' : ''
+            }`}
+          >
+            <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  API Documentation
+                </h3>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                  Learn how to integrate Circuit's matching API into your application.
+                  {!isDocExpanded && (
+                    <span className="ml-2 text-indigo-600 text-xs">
+                      (Click "Expand" to view)
+                    </span>
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsDocExpanded(!isDocExpanded)}
+                className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+                aria-expanded={isDocExpanded}
+              >
+                {isDocExpanded ? (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                    </svg>
+                    Collapse
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                    Expand
+                  </>
+                )}
+              </button>
             </div>
-            <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
-              <div className="prose max-w-none">
-                <h4 className="text-base font-medium text-gray-900 mb-2">Quick Start Guide</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  To use our API, you'll need to make POST requests to our matching endpoint with your API key and player data.
-                </p>
-                
-                <h4 className="text-base font-medium text-gray-900 mb-2">Endpoint</h4>
-                <div className="bg-gray-100 p-2 rounded font-mono text-sm mb-4">
-                  POST https://api.circuit.com/api/matching
-                </div>
-                
-                <h4 className="text-base font-medium text-gray-900 mb-2">Request Structure</h4>
-                <p className="text-sm text-gray-600 mb-2">
-                  Your request must include your API key and conform to the following structure:
-                </p>
-                <div className="bg-gray-800 p-4 rounded-lg font-mono text-sm mb-4 overflow-x-auto text-white">
-                  <pre className="whitespace-pre-wrap">
+            <div 
+              className={`border-t border-gray-200 overflow-hidden transition-all duration-300 ease-in-out ${
+                isDocExpanded ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'
+              }`}
+            >
+              <div className="px-4 py-5 sm:px-6">
+                <div className="prose max-w-none">
+                  <h4 className="text-base font-medium text-gray-900 mb-2">Quick Start Guide</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    To use our API, you'll need to make POST requests to our matching endpoint with your API key and player data.
+                  </p>
+                  
+                  <h4 className="text-base font-medium text-gray-900 mb-2">Endpoint</h4>
+                  <div className="bg-gray-100 p-2 rounded font-mono text-sm mb-4">
+                    POST https://api.circuit.com/api/matching
+                  </div>
+                  
+                  <h4 className="text-base font-medium text-gray-900 mb-2">Request Structure</h4>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Your request must include your API key and conform to the following structure:
+                  </p>
+                  <div className="bg-gray-800 p-4 rounded-lg font-mono text-sm mb-4 overflow-x-auto text-white">
+                    <pre className="whitespace-pre-wrap">
 {`{
   "apiKey": "your_api_key",
   "players": [
@@ -472,45 +511,45 @@ export default function DashboardPage() {
   "groupSize": 4,
   "optimizationGoal": "social" // or "skill" or "balanced"
 }`}
-                  </pre>
-                </div>
-                
-                <h4 className="text-base font-medium text-gray-900 mb-2">What Happens When You Call Our API</h4>
-                <div className="space-y-4 text-sm text-gray-600">
-                  <p>
-                    When you send a request to our matching API, here's exactly what happens:
-                  </p>
+                    </pre>
+                  </div>
                   
-                  <ol className="list-decimal pl-5 space-y-2">
-                    <li>
-                      <span className="font-medium">Authentication:</span> We validate your API key to ensure you have access to our service.
-                    </li>
-                    <li>
-                      <span className="font-medium">Request Validation:</span> We check that your request contains all required fields and that they're properly formatted.
-                    </li>
-                    <li>
-                      <span className="font-medium">Rate Limiting:</span> We check that you haven't exceeded your rate limit (20 requests per minute).
-                    </li>
-                    <li>
-                      <span className="font-medium">Usage Tracking:</span> We log your API call to your account for your dashboard statistics.
-                    </li>
-                    <li>
-                      <span className="font-medium">AI Processing:</span> Our advanced matching algorithm analyzes your players' data to create optimal groups.
-                    </li>
-                    <li>
-                      <span className="font-medium">Quality Scoring:</span> We calculate a quality score for your match based on how well the groups satisfy your optimization goal.
-                    </li>
-                    <li>
-                      <span className="font-medium">Response Generation:</span> We format the results and send them back to you.
-                    </li>
-                  </ol>
-                  
-                  <h5 className="text-base font-medium text-gray-900 mt-4 mb-2">Example Case</h5>
-                  
-                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                    <p className="font-medium mb-2">Example Request:</p>
-                    <div className="bg-gray-800 p-4 rounded-lg font-mono text-sm mb-4 overflow-x-auto text-white">
-                      <pre className="whitespace-pre-wrap">
+                  <h4 className="text-base font-medium text-gray-900 mb-2">What Happens When You Call Our API</h4>
+                  <div className="space-y-4 text-sm text-gray-600">
+                    <p>
+                      When you send a request to our matching API, here's exactly what happens:
+                    </p>
+                    
+                    <ol className="list-decimal pl-5 space-y-2">
+                      <li>
+                        <span className="font-medium">Authentication:</span> We validate your API key to ensure you have access to our service.
+                      </li>
+                      <li>
+                        <span className="font-medium">Request Validation:</span> We check that your request contains all required fields and that they're properly formatted.
+                      </li>
+                      <li>
+                        <span className="font-medium">Rate Limiting:</span> We check that you haven't exceeded your rate limit (20 requests per minute).
+                      </li>
+                      <li>
+                        <span className="font-medium">Usage Tracking:</span> We log your API call to your account for your dashboard statistics.
+                      </li>
+                      <li>
+                        <span className="font-medium">AI Processing:</span> Our advanced matching algorithm analyzes your players' data to create optimal groups.
+                      </li>
+                      <li>
+                        <span className="font-medium">Quality Scoring:</span> We calculate a quality score for your match based on how well the groups satisfy your optimization goal.
+                      </li>
+                      <li>
+                        <span className="font-medium">Response Generation:</span> We format the results and send them back to you.
+                      </li>
+                    </ol>
+                    
+                    <h5 className="text-base font-medium text-gray-900 mt-4 mb-2">Example Case</h5>
+                    
+                    <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                      <p className="font-medium mb-2">Example Request:</p>
+                      <div className="bg-gray-800 p-4 rounded-lg font-mono text-sm mb-4 overflow-x-auto text-white">
+                        <pre className="whitespace-pre-wrap">
 {`// POST to https://api.circuit.com/api/matching
 {
   "apiKey": "circuit_a1b2c3d4e5f6g7h8i9j0",
@@ -563,12 +602,12 @@ export default function DashboardPage() {
   "groupSize": 2,
   "optimizationGoal": "social"
 }`}
-                      </pre>
-                    </div>
-                    
-                    <p className="font-medium mb-2">Example Response:</p>
-                    <div className="bg-gray-800 p-4 rounded-lg font-mono text-sm overflow-x-auto text-white">
-                      <pre className="whitespace-pre-wrap">
+                        </pre>
+                      </div>
+                      
+                      <p className="font-medium mb-2">Example Response:</p>
+                      <div className="bg-gray-800 p-4 rounded-lg font-mono text-sm overflow-x-auto text-white">
+                        <pre className="whitespace-pre-wrap">
 {`{
   "groups": [
     {
@@ -597,40 +636,41 @@ export default function DashboardPage() {
   "timestamp": "2023-06-15T14:22:33.456Z",
   "quality": 78
 }`}
-                      </pre>
-                    </div>
-                    
-                    <div className="mt-4 text-sm">
-                      <p className="font-medium mb-1">What happened behind the scenes:</p>
-                      <ol className="list-decimal pl-5 space-y-1">
-                        <li>We validated your API key "circuit_a1b2c3d4e5f6g7h8i9j0"</li>
-                        <li>We checked your request format and confirmed all required fields</li>
-                        <li>We verified you hadn't exceeded your rate limit</li>
-                        <li>We logged this API call to your account (visible in your dashboard stats)</li>
-                        <li>Our algorithm analyzed the 4 players and created 2 groups of 2 players each</li>
-                        <li>We optimized for "social" compatibility as requested</li>
-                        <li>We calculated an overall quality score of 78 for this match</li>
-                        <li>We stored this match in your history (visible in your recent matches)</li>
-                        <li>We returned the formatted response with detailed group information</li>
-                      </ol>
+                        </pre>
+                      </div>
+                      
+                      <div className="mt-4 text-sm">
+                        <p className="font-medium mb-1">What happened behind the scenes:</p>
+                        <ol className="list-decimal pl-5 space-y-1">
+                          <li>We validated your API key "circuit_a1b2c3d4e5f6g7h8i9j0"</li>
+                          <li>We checked your request format and confirmed all required fields</li>
+                          <li>We verified you hadn't exceeded your rate limit</li>
+                          <li>We logged this API call to your account (visible in your dashboard stats)</li>
+                          <li>Our algorithm analyzed the 4 players and created 2 groups of 2 players each</li>
+                          <li>We optimized for "social" compatibility as requested</li>
+                          <li>We calculated an overall quality score of 78 for this match</li>
+                          <li>We stored this match in your history (visible in your recent matches)</li>
+                          <li>We returned the formatted response with detailed group information</li>
+                        </ol>
+                      </div>
                     </div>
                   </div>
-                </div>
-                
-                <h4 className="text-base font-medium text-gray-900 mt-6 mb-2">Rate Limits & Usage</h4>
-                <p className="text-sm text-gray-600 mb-2">
-                  • Standard accounts: 20 requests per minute<br />
-                  • All API usage is tracked and visible in your dashboard<br />
-                  • Each successful match is stored in your match history
-                </p>
-                
-                <div className="flex justify-end items-center mt-6">
-                  <Link 
-                    href="/api-playground"
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    Try API Playground
-                  </Link>
+                  
+                  <h4 className="text-base font-medium text-gray-900 mt-6 mb-2">Rate Limits & Usage</h4>
+                  <p className="text-sm text-gray-600 mb-2">
+                    • Standard accounts: 20 requests per minute<br />
+                    • All API usage is tracked and visible in your dashboard<br />
+                    • Each successful match is stored in your match history
+                  </p>
+                  
+                  <div className="flex justify-end items-center mt-6">
+                    <Link 
+                      href="/api-playground"
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      Try API Playground
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
