@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { randomUUID } from 'crypto';
 
 // This endpoint returns user-specific data for the dashboard
 export async function GET(request: NextRequest) {
@@ -17,60 +18,85 @@ export async function GET(request: NextRequest) {
     
     // Get user ID from session
     const userId = (session.user as any).id;
+    const email = session.user.email;
     
     // In a real application, you would fetch this data from your database
-    // based on the user ID. For now, we'll return some sample data.
+    // based on the user ID. For now, we'll generate deterministic data based on the user's email
+    // to ensure the same user always gets the same data
     
-    // Get user's API usage statistics
+    // Create a simple hash of the email for deterministic "random" values
+    const emailHash = Array.from(email || 'default@example.com').reduce(
+      (hash, char) => (hash * 31 + char.charCodeAt(0)) & 0xFFFFFFFF, 0
+    );
+    
+    // Get user's API usage statistics - deterministic based on user email
     const userStats = {
-      totalMatches: 42, // This would come from your database
-      apiUsage: 1250,   // This would come from your database
-      averageMatchQuality: 87 // This would come from your database
+      totalMatches: 30 + (emailHash % 50), // Between 30-79 matches
+      apiUsage: 800 + (emailHash % 2000),  // Between 800-2799 API calls
+      averageMatchQuality: 75 + (emailHash % 20) // Between 75-94% quality
     };
     
-    // Get user's recent matches
-    const recentMatches = [
-      {
-        id: 'match-001',
+    // Generate match details specific to this user
+    const optimizationTypes = ['skill', 'social', 'balanced'];
+    const recentMatches = Array.from({ length: 5 }).map((_, index) => {
+      const matchHash = (emailHash + index) & 0xFFFFFFFF;
+      const playerCount = 12 + (matchHash % 28); // Between 12-39 players
+      const groupCount = Math.max(2, Math.floor(playerCount / 4)); // Reasonable group count
+      const optimizationType = optimizationTypes[matchHash % 3];
+      
+      return {
+        id: `match-${userId}-${100 + index}`,
         status: 'Completed',
-        details: '24 players • 6 groups • skill optimization',
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() // 2 hours ago
-      },
-      {
-        id: 'match-002',
-        status: 'Completed',
-        details: '16 players • 4 groups • social optimization',
-        createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() // 8 hours ago
-      },
-      {
-        id: 'match-003',
-        status: 'Completed',
-        details: '32 players • 8 groups • balanced optimization',
-        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() // 1 day ago
-      },
-      {
-        id: 'match-004',
-        status: 'Completed',
-        details: '20 players • 5 groups • skill optimization',
-        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() // 2 days ago
-      },
-      {
-        id: 'match-005',
-        status: 'Completed',
-        details: '28 players • 7 groups • social optimization',
-        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days ago
-      }
-    ];
+        details: `${playerCount} players • ${groupCount} groups • ${optimizationType} optimization`,
+        createdAt: new Date(Date.now() - (index + 1) * 12 * 60 * 60 * 1000).toISOString() // Staggered times
+      };
+    });
     
     // Return the user data
     return NextResponse.json({
       stats: userStats,
       recentMatches: recentMatches,
-      totalMatchCount: 12 // Total number of matches for pagination
+      totalMatchCount: userStats.totalMatches,
+      currentPage: 1,
+      totalPages: Math.ceil(userStats.totalMatches / 5)
     });
     
   } catch (error: any) {
     console.error('Error fetching user data:', error);
+    
+    return NextResponse.json(
+      { error: 'Internal server error', message: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// Endpoint to generate a new API key for the user
+export async function POST(request: NextRequest) {
+  try {
+    // Check if user is authenticated
+    const session = await getServerSession(authOptions);
+    
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    // Generate a new API key
+    const newApiKey = `circuit_${randomUUID().replace(/-/g, '')}`;
+    
+    // In a real application, you would save this API key to the user's record in your database
+    // For now, we'll just return it
+    
+    return NextResponse.json({
+      apiKey: newApiKey,
+      message: 'New API key generated successfully'
+    });
+    
+  } catch (error: any) {
+    console.error('Error generating API key:', error);
     
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },

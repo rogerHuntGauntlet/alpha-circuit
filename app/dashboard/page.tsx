@@ -23,6 +23,8 @@ interface UserData {
   stats: UserStats;
   recentMatches: Match[];
   totalMatchCount: number;
+  currentPage: number;
+  totalPages: number;
 }
 
 export default function DashboardPage() {
@@ -30,6 +32,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [isGeneratingKey, setIsGeneratingKey] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [userData, setUserData] = useState<UserData>({
     stats: {
       totalMatches: 0,
@@ -37,7 +41,9 @@ export default function DashboardPage() {
       averageMatchQuality: 0
     },
     recentMatches: [],
-    totalMatchCount: 0
+    totalMatchCount: 0,
+    currentPage: 1,
+    totalPages: 1
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -57,10 +63,10 @@ export default function DashboardPage() {
   }, [status, session, router]);
 
   // Function to fetch user data from our API
-  const fetchUserData = async () => {
+  const fetchUserData = async (page = 1) => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/user');
+      const response = await fetch(`/api/user?page=${page}`);
       
       if (!response.ok) {
         throw new Error(`Error fetching user data: ${response.statusText}`);
@@ -68,6 +74,7 @@ export default function DashboardPage() {
       
       const data = await response.json();
       setUserData(data);
+      setCurrentPage(data.currentPage);
       setError(null);
     } catch (err: any) {
       console.error('Failed to fetch user data:', err);
@@ -90,8 +97,35 @@ export default function DashboardPage() {
 
   // Function to generate a new API key
   const generateNewApiKey = async () => {
-    // In a real app, this would call an API endpoint to generate a new key
-    alert('This feature is not implemented yet.');
+    try {
+      setIsGeneratingKey(true);
+      const response = await fetch('/api/user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error generating API key: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      setApiKey(data.apiKey);
+      alert('New API key generated successfully!');
+    } catch (err: any) {
+      console.error('Failed to generate new API key:', err);
+      alert('Failed to generate new API key. Please try again later.');
+    } finally {
+      setIsGeneratingKey(false);
+    }
+  };
+
+  // Function to handle pagination
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= userData.totalPages) {
+      fetchUserData(newPage);
+    }
   };
 
   // Format date to relative time (e.g., "2 hours ago")
@@ -106,11 +140,11 @@ export default function DashboardPage() {
     return `${Math.floor(diffInSeconds / 86400)} days ago`;
   };
 
-  if (isLoading) {
+  if (isLoading && !userData.recentMatches.length) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-700">Loading dashboard...</h2>
+          <h2 className="text-xl font-semibold text-gray-700">Loading your dashboard...</h2>
           <div className="mt-4 w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto"></div>
         </div>
       </div>
@@ -124,7 +158,7 @@ export default function DashboardPage() {
           <h2 className="text-xl font-semibold text-red-600 mb-4">Error</h2>
           <p className="text-gray-700 mb-4">{error}</p>
           <button 
-            onClick={fetchUserData}
+            onClick={() => fetchUserData()}
             className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md"
           >
             Try Again
@@ -132,6 +166,23 @@ export default function DashboardPage() {
         </div>
       </div>
     );
+  }
+
+  // Generate pagination items
+  const paginationItems = [];
+  for (let i = 1; i <= userData.totalPages; i++) {
+    if (
+      i === 1 || 
+      i === userData.totalPages || 
+      (i >= currentPage - 1 && i <= currentPage + 1)
+    ) {
+      paginationItems.push(i);
+    } else if (
+      (i === 2 && currentPage > 3) || 
+      (i === userData.totalPages - 1 && currentPage < userData.totalPages - 2)
+    ) {
+      paginationItems.push('ellipsis');
+    }
   }
 
   return (
@@ -161,7 +212,7 @@ export default function DashboardPage() {
               <div className="px-4 py-5 sm:p-6">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">
-                    Total Matches
+                    Your Total Matches
                   </dt>
                   <dd className="mt-1 text-3xl font-semibold text-gray-900">
                     {userData.stats.totalMatches}
@@ -174,7 +225,7 @@ export default function DashboardPage() {
               <div className="px-4 py-5 sm:p-6">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">
-                    API Usage
+                    Your API Usage
                   </dt>
                   <dd className="mt-1 text-3xl font-semibold text-gray-900">
                     {userData.stats.apiUsage.toLocaleString()}
@@ -187,7 +238,7 @@ export default function DashboardPage() {
               <div className="px-4 py-5 sm:p-6">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">
-                    Average Match Quality
+                    Your Average Match Quality
                   </dt>
                   <dd className="mt-1 text-3xl font-semibold text-gray-900">
                     {userData.stats.averageMatchQuality}%
@@ -202,18 +253,19 @@ export default function DashboardPage() {
             <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
               <div>
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  API Keys
+                  Your API Keys
                 </h3>
                 <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                  Your API key for integrating with Circuit.
+                  Your personal API key for integrating with Circuit.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={generateNewApiKey}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                disabled={isGeneratingKey}
+                className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${isGeneratingKey ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
               >
-                Generate New Key
+                {isGeneratingKey ? 'Generating...' : 'Generate New Key'}
               </button>
             </div>
             <div className="border-t border-gray-200">
@@ -224,12 +276,12 @@ export default function DashboardPage() {
                   </dt>
                   <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                     <div className="flex items-center">
-                      <span className="font-mono bg-gray-100 px-2 py-1 rounded mr-2">
+                      <span className="font-mono bg-gray-100 px-2 py-1 rounded mr-2 overflow-x-auto max-w-xs">
                         {apiKey}
                       </span>
                       <button 
                         onClick={() => copyToClipboard(apiKey || '')}
-                        className="text-indigo-600 hover:text-indigo-900"
+                        className="text-indigo-600 hover:text-indigo-900 whitespace-nowrap"
                       >
                         Copy
                       </button>
@@ -244,56 +296,69 @@ export default function DashboardPage() {
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <div className="px-4 py-5 sm:px-6">
               <h3 className="text-lg leading-6 font-medium text-gray-900">
-                Recent Matches
+                Your Recent Matches
               </h3>
               <p className="mt-1 max-w-2xl text-sm text-gray-500">
                 Your most recent matching requests.
               </p>
             </div>
-            <ul className="divide-y divide-gray-200">
-              {userData.recentMatches.map((match) => (
-                <li key={match.id}>
-                  <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-indigo-600 truncate">
-                        Match #{match.id}
-                      </p>
-                      <div className="ml-2 flex-shrink-0 flex">
-                        <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                          {match.status}
+            {isLoading && (
+              <div className="flex justify-center items-center py-8">
+                <div className="w-8 h-8 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
+              </div>
+            )}
+            {!isLoading && userData.recentMatches.length === 0 ? (
+              <div className="px-4 py-6 text-center text-gray-500">
+                You haven't created any matches yet.
+              </div>
+            ) : (
+              <ul className="divide-y divide-gray-200">
+                {userData.recentMatches.map((match) => (
+                  <li key={match.id}>
+                    <div className="px-4 py-4 sm:px-6">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-indigo-600 truncate">
+                          Your Match #{match.id.split('-').pop()}
                         </p>
+                        <div className="ml-2 flex-shrink-0 flex">
+                          <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            {match.status}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-2 sm:flex sm:justify-between">
+                        <div className="sm:flex">
+                          <p className="flex items-center text-sm text-gray-500">
+                            {match.details}
+                          </p>
+                        </div>
+                        <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                          <p>
+                            Created {formatRelativeTime(match.createdAt)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-500">
-                          {match.details}
-                        </p>
-                      </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                        <p>
-                          Created {formatRelativeTime(match.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+            )}
             <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
               <div className="flex-1 flex justify-between sm:hidden">
-                <a
-                  href="#"
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                 >
                   Previous
-                </a>
-                <a
-                  href="#"
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                </button>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === userData.totalPages}
+                  className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${currentPage === userData.totalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                 >
                   Next
-                </a>
+                </button>
               </div>
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
@@ -305,37 +370,91 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                    <a
-                      href="#"
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 ${currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
                     >
                       <span className="sr-only">Previous</span>
                       <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
-                    </a>
-                    <a
-                      href="#"
-                      aria-current="page"
-                      className="z-10 bg-indigo-50 border-indigo-500 text-indigo-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium"
-                    >
-                      1
-                    </a>
-                    <a
-                      href="#"
-                      className="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium"
-                    >
-                      2
-                    </a>
-                    <a
-                      href="#"
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                    </button>
+                    
+                    {userData.totalPages <= 5 ? (
+                      // Show all pages if there are 5 or fewer
+                      Array.from({ length: userData.totalPages }).map((_, i) => (
+                        <button
+                          key={i + 1}
+                          onClick={() => handlePageChange(i + 1)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            currentPage === i + 1
+                              ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {i + 1}
+                        </button>
+                      ))
+                    ) : (
+                      // Show pagination with ellipsis for more than 5 pages
+                      <>
+                        <button
+                          onClick={() => handlePageChange(1)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            currentPage === 1
+                              ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          1
+                        </button>
+                        
+                        {currentPage > 3 && (
+                          <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                            ...
+                          </span>
+                        )}
+                        
+                        {currentPage !== 1 && currentPage !== userData.totalPages && (
+                          <button
+                            className="z-10 bg-indigo-50 border-indigo-500 text-indigo-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium"
+                          >
+                            {currentPage}
+                          </button>
+                        )}
+                        
+                        {currentPage < userData.totalPages - 2 && (
+                          <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                            ...
+                          </span>
+                        )}
+                        
+                        {userData.totalPages > 1 && (
+                          <button
+                            onClick={() => handlePageChange(userData.totalPages)}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                              currentPage === userData.totalPages
+                                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                            }`}
+                          >
+                            {userData.totalPages}
+                          </button>
+                        )}
+                      </>
+                    )}
+                    
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === userData.totalPages}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 ${currentPage === userData.totalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
                     >
                       <span className="sr-only">Next</span>
                       <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                       </svg>
-                    </a>
+                    </button>
                   </nav>
                 </div>
               </div>
