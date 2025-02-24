@@ -49,15 +49,44 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Redirect to login if not authenticated
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin');
-    }
-
     // Fetch user data when session is available
     if (status === 'authenticated' && session?.user) {
       // Fetch user-specific data from our API
       fetchUserData();
+    } else if (status === 'unauthenticated') {
+      // Set sample data for unauthenticated users
+      setUserData({
+        apiKey: 'circuit_************************',
+        stats: {
+          totalMatches: 12,
+          apiUsage: 47,
+          averageMatchQuality: 85
+        },
+        recentMatches: [
+          {
+            id: 'sample-1',
+            status: 'completed',
+            details: '24 players • 6 groups • social optimization',
+            createdAt: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
+          },
+          {
+            id: 'sample-2',
+            status: 'completed',
+            details: '16 players • 4 groups • skill optimization',
+            createdAt: new Date(Date.now() - 86400000).toISOString() // 1 day ago
+          },
+          {
+            id: 'sample-3',
+            status: 'completed',
+            details: '32 players • 8 groups • balanced optimization',
+            createdAt: new Date(Date.now() - 172800000).toISOString() // 2 days ago
+          }
+        ],
+        totalMatchCount: 12,
+        currentPage: 1,
+        totalPages: 1
+      });
+      setIsLoading(false);
     }
   }, [status, session, router]);
 
@@ -208,21 +237,40 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Circuit Dashboard</h1>
           <div className="flex items-center">
-            <span className="mr-4 text-gray-600">
-              Welcome, {session?.user?.name || session?.user?.email || 'User'}
-            </span>
-            <Link 
-              href="/documentation"
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium mr-2"
-            >
-              API Documentation
-            </Link>
-            <button 
-              onClick={() => router.push('/api/auth/signout')}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-700 text-sm font-medium"
-            >
-              Sign Out
-            </button>
+            {status === 'authenticated' ? (
+              <>
+                <span className="mr-4 text-gray-600">
+                  Welcome, {session?.user?.name || session?.user?.email || 'User'}
+                </span>
+                <Link 
+                  href="/documentation"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium mr-2"
+                >
+                  API Documentation
+                </Link>
+                <button 
+                  onClick={() => router.push('/api/auth/signout')}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-700 text-sm font-medium"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link 
+                  href="/documentation"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium mr-2"
+                >
+                  API Documentation
+                </Link>
+                <button 
+                  onClick={() => router.push('/auth/signin')}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium"
+                >
+                  Sign In
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -271,7 +319,32 @@ export default function DashboardPage() {
             </div>
           </div>
           
-          {userData.stats.totalMatches === 0 && userData.stats.apiUsage === 0 && (
+          {status === 'unauthenticated' && (
+            <div className="mb-8 bg-indigo-50 p-4 rounded-md">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-indigo-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3 flex-1 md:flex md:justify-between">
+                  <p className="text-sm text-indigo-700">
+                    You're viewing a demo of the Circuit dashboard. Sign in to get your own API key and start using our matching service.
+                  </p>
+                  <p className="mt-3 text-sm md:mt-0 md:ml-6">
+                    <button 
+                      onClick={() => router.push('/auth/signin')}
+                      className="whitespace-nowrap font-medium text-indigo-700 hover:text-indigo-600"
+                    >
+                      Sign in now <span aria-hidden="true">&rarr;</span>
+                    </button>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {userData.stats.totalMatches === 0 && userData.stats.apiUsage === 0 && status === 'authenticated' && (
             <div className="mb-8 bg-blue-50 p-4 rounded-md">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -294,7 +367,21 @@ export default function DashboardPage() {
           )}
           
           {/* API Keys */}
-          <div className="mb-8 bg-white shadow overflow-hidden sm:rounded-lg">
+          <div className="mb-8 bg-white shadow overflow-hidden sm:rounded-lg relative">
+            {status === 'unauthenticated' && (
+              <div className="absolute inset-0 bg-gray-100 bg-opacity-70 flex items-center justify-center z-10">
+                <div className="text-center p-6 bg-white rounded-lg shadow-lg max-w-md">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Get Your API Key</h3>
+                  <p className="text-gray-600 mb-4">Sign in to get your own API key and start using our matching service.</p>
+                  <button 
+                    onClick={() => router.push('/auth/signin')}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium"
+                  >
+                    Sign In
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
               <div>
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
@@ -307,8 +394,8 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={generateNewApiKey}
-                disabled={isGeneratingKey}
-                className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${isGeneratingKey ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+                disabled={isGeneratingKey || status === 'unauthenticated'}
+                className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${isGeneratingKey || status === 'unauthenticated' ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
               >
                 {isGeneratingKey ? 'Generating...' : 'Generate New Key'}
               </button>
@@ -326,7 +413,8 @@ export default function DashboardPage() {
                       </span>
                       <button 
                         onClick={() => copyToClipboard(userData.apiKey)}
-                        className="text-indigo-600 hover:text-indigo-900 whitespace-nowrap"
+                        disabled={status === 'unauthenticated'}
+                        className={`text-indigo-600 hover:text-indigo-900 whitespace-nowrap ${status === 'unauthenticated' ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         Copy
                       </button>
