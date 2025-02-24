@@ -15,13 +15,10 @@ export default function Home() {
               </span>
             </div>
             <div className="flex items-center space-x-4">
-              <Link href="/pricing" 
+              
+              <Link href="/api-playground" 
                 className="text-purple-100 hover:text-white px-3 py-2 rounded-md transition-all duration-200 hover:scale-105">
-                Pricing
-              </Link>
-              <Link href="/docs" 
-                className="text-purple-100 hover:text-white px-3 py-2 rounded-md transition-all duration-200 hover:scale-105">
-                Documentation
+                Playground
               </Link>
               <Link href="/dashboard" 
                 className="text-purple-100 hover:text-white px-3 py-2 rounded-md transition-all duration-200 hover:scale-105">
