@@ -1,11 +1,11 @@
 // File: app/api/matching/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { generatePlayerGroups } from '@/lib/openai';
+import { generatePlayerGroups } from '../../lib/openai';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { validateApiKey } from '@/lib/api-keys';
-import { rateLimit } from '@/lib/rate-limit';
-import { prisma } from '@/lib/prisma';
+import { authOptions } from '../../lib/auth';
+import { validateApiKey } from '../../lib/api-keys';
+import { rateLimit } from '../../lib/rate-limit';
+import { prisma } from '../../lib/prisma';
 import { z } from 'zod';
 
 // Schema for the request body
@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
     
     // API key validation for external clients
     if (!session) {
-      const keyValidation = await validateApiKey(apiKey);
-      if (!keyValidation.valid) {
+      const isValidKey = await validateApiKey(apiKey);
+      if (!isValidKey) {
         return NextResponse.json(
           { error: 'Invalid API key' },
           { status: 401 }
@@ -88,17 +88,6 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Log the matching request to the database
-    const matchRequest = await prisma.matchRequest.create({
-      data: {
-        userId: session?.user?.id || keyValidation.userId,
-        playersCount: players.length,
-        groupSize,
-        optimizationGoal,
-        status: 'processing',
-      },
-    });
-    
     // Call the OpenAI function to generate player groups
     const playerGroups = await generatePlayerGroups({
       players,
@@ -106,41 +95,8 @@ export async function POST(request: NextRequest) {
       optimizationGoal,
     });
     
-    // Store the results
-    const match = await prisma.match.create({
-      data: {
-        id: matchRequest.id,
-        userId: session?.user?.id || keyValidation.userId,
-        groups: playerGroups,
-        parameters: {
-          groupSize,
-          optimizationGoal,
-          playersCount: players.length,
-        },
-      },
-    });
-    
-    // Update the match request status
-    await prisma.matchRequest.update({
-      where: { id: matchRequest.id },
-      data: { status: 'completed' },
-    });
-    
-    // Track API usage
-    if (!session) {
-      await prisma.apiUsage.create({
-        data: {
-          userId: keyValidation.userId,
-          endpoint: 'matching',
-          tokensUsed: 0, // This would be obtained from the OpenAI completion
-          cost: 0, // This would be calculated based on token usage
-        },
-      });
-    }
-    
     // Return the results
     return NextResponse.json({
-      matchId: match.id,
       groups: playerGroups,
       timestamp: new Date().toISOString(),
     });

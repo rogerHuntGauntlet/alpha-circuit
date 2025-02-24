@@ -6,47 +6,37 @@ const kv = createClient({
 });
 
 interface RateLimitConfig {
-  maxRequests: number;  // Maximum number of requests
-  windowMs: number;     // Time window in milliseconds
+  interval: number;              // Time window in milliseconds
+  uniqueTokenPerInterval: number; // Maximum number of unique tokens per interval
 }
 
-export async function rateLimit(
-  identifier: string,
-  config: RateLimitConfig = { maxRequests: 100, windowMs: 60 * 1000 } // Default: 100 requests per minute
-): Promise<boolean> {
-  try {
-    const now = Date.now();
-    const key = `ratelimit:${identifier}`;
-    
-    // Get current requests data
-    const data = await kv.get<{ requests: number; windowStart: number }>(key);
-    
-    if (!data) {
-      // First request, initialize counter
-      await kv.set(key, { requests: 1, windowStart: now }, { ex: Math.ceil(config.windowMs / 1000) });
-      return true;
+export function rateLimit(config: RateLimitConfig) {
+  return {
+    async check(limit: number, token: string) {
+      const now = Date.now();
+      const key = `ratelimit:${token}:${Math.floor(now / config.interval)}`;
+      
+      try {
+        const count = await kv.incr(key);
+        
+        // Set expiration for the key
+        if (count === 1) {
+          await kv.expire(key, Math.ceil(config.interval / 1000));
+        }
+        
+        if (count > limit) {
+          throw new Error('Rate limit exceeded');
+        }
+        
+        return { success: true, limit, remaining: limit - count };
+      } catch (error) {
+        if (error instanceof Error && error.message === 'Rate limit exceeded') {
+          throw error;
+        }
+        console.error('Rate limiting error:', error);
+        // In case of error, allow the request
+        return { success: true, limit, remaining: 1 };
+      }
     }
-
-    if (now - data.windowStart >= config.windowMs) {
-      // Window expired, reset counter
-      await kv.set(key, { requests: 1, windowStart: now }, { ex: Math.ceil(config.windowMs / 1000) });
-      return true;
-    }
-
-    if (data.requests >= config.maxRequests) {
-      // Rate limit exceeded
-      return false;
-    }
-
-    // Increment request counter
-    await kv.set(key, 
-      { requests: data.requests + 1, windowStart: data.windowStart },
-      { ex: Math.ceil((config.windowMs - (now - data.windowStart)) / 1000) }
-    );
-    return true;
-  } catch (error) {
-    console.error('Rate limiting error:', error);
-    // In case of error, allow the request
-    return true;
-  }
+  };
 } 
