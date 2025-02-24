@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
+import { createClient } from '@vercel/kv';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+
+const kv = createClient({
+  url: process.env.KV_REST_API_URL || '',
+  token: process.env.KV_REST_API_TOKEN || ''
+});
 
 export async function POST(req: Request) {
   try {
@@ -43,7 +48,7 @@ export async function POST(req: Request) {
       createdAt: Date.now(),
     };
 
-    // Store user in Vercel KV
+    // Store user in KV
     await kv.hset(`user:${email}`, user);
     await kv.set(`apikey:${apiKey}`, userId);
 

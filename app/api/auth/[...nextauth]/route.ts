@@ -2,15 +2,21 @@ import NextAuth from "next-auth";
 import { AuthOptions } from "next-auth";
 import GithubProvider from "next-auth/providers/github";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { kv } from '@vercel/kv';
+import { createClient } from '@vercel/kv';
 import bcrypt from 'bcryptjs';
 
-interface UserData {
+const kv = createClient({
+  url: process.env.KV_REST_API_URL || '',
+  token: process.env.KV_REST_API_TOKEN || ''
+});
+
+interface UserData extends Record<string, unknown> {
   id: string;
   email: string;
   name: string;
   password: string;
   apiKey: string;
+  company?: string;
 }
 
 export const authOptions: AuthOptions = {
@@ -62,12 +68,14 @@ export const authOptions: AuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.apiKey = (user as any).apiKey;
+        token.email = user.email;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).apiKey = token.apiKey;
+        session.user.email = token.email as string;
       }
       return session;
     }
