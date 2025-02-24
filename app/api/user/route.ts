@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { randomUUID } from 'crypto';
+import { prisma } from '@/lib/prisma';
+import { generateApiKey, getUserApiKeys } from '@/lib/api-keys';
+import { getUserApiStats } from '@/lib/api-usage';
 
 // This endpoint returns user-specific data for the dashboard
 export async function GET(request: NextRequest) {
@@ -18,47 +21,39 @@ export async function GET(request: NextRequest) {
     
     // Get user ID from session
     const userId = (session.user as any).id;
-    const email = session.user.email;
     
-    // In a real application, you would fetch this data from your database
-    // based on the user ID. For now, we'll generate deterministic data based on the user's email
-    // to ensure the same user always gets the same data
+    // Get the user's API keys
+    const apiKeys = await getUserApiKeys(userId);
     
-    // Create a simple hash of the email for deterministic "random" values
-    const emailHash = Array.from(email || 'default@example.com').reduce(
-      (hash, char) => (hash * 31 + char.charCodeAt(0)) & 0xFFFFFFFF, 0
-    );
+    // Get the primary API key (most recent)
+    const primaryApiKey = apiKeys.length > 0 ? apiKeys[0].key : null;
     
-    // Get user's API usage statistics - deterministic based on user email
-    const userStats = {
-      totalMatches: 30 + (emailHash % 50), // Between 30-79 matches
-      apiUsage: 800 + (emailHash % 2000),  // Between 800-2799 API calls
-      averageMatchQuality: 75 + (emailHash % 20) // Between 75-94% quality
-    };
+    // If no API key exists, generate one
+    let apiKey = primaryApiKey;
+    if (!apiKey) {
+      apiKey = await generateApiKey(userId);
+    }
     
-    // Generate match details specific to this user
-    const optimizationTypes = ['skill', 'social', 'balanced'];
-    const recentMatches = Array.from({ length: 5 }).map((_, index) => {
-      const matchHash = (emailHash + index) & 0xFFFFFFFF;
-      const playerCount = 12 + (matchHash % 28); // Between 12-39 players
-      const groupCount = Math.max(2, Math.floor(playerCount / 4)); // Reasonable group count
-      const optimizationType = optimizationTypes[matchHash % 3];
-      
-      return {
-        id: `match-${userId}-${100 + index}`,
-        status: 'Completed',
-        details: `${playerCount} players • ${groupCount} groups • ${optimizationType} optimization`,
-        createdAt: new Date(Date.now() - (index + 1) * 12 * 60 * 60 * 1000).toISOString() // Staggered times
-      };
-    });
+    // Get user's API usage statistics
+    const userStats = await getUserApiStats(userId);
+    
+    // Get pagination parameters
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const pageSize = 5;
+    
+    // Calculate pagination
+    const totalPages = Math.ceil(userStats.totalMatchCount / pageSize);
+    const currentPage = Math.min(Math.max(1, page), Math.max(1, totalPages));
     
     // Return the user data
     return NextResponse.json({
-      stats: userStats,
-      recentMatches: recentMatches,
-      totalMatchCount: userStats.totalMatches,
-      currentPage: 1,
-      totalPages: Math.ceil(userStats.totalMatches / 5)
+      apiKey,
+      stats: userStats.stats,
+      recentMatches: userStats.recentMatches,
+      totalMatchCount: userStats.totalMatchCount,
+      currentPage,
+      totalPages
     });
     
   } catch (error: any) {
@@ -84,11 +79,11 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Generate a new API key
-    const newApiKey = `circuit_${randomUUID().replace(/-/g, '')}`;
+    // Get user ID from session
+    const userId = (session.user as any).id;
     
-    // In a real application, you would save this API key to the user's record in your database
-    // For now, we'll just return it
+    // Generate a new API key
+    const newApiKey = await generateApiKey(userId);
     
     return NextResponse.json({
       apiKey: newApiKey,

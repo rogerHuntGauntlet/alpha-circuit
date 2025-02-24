@@ -4,6 +4,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { validateApiKey } from '@/lib/api-keys';
 import { rateLimit } from '@/lib/rate-limit';
+import { trackApiUsage } from '@/lib/api-usage';
+import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
 // Schema for the request body
@@ -39,6 +41,8 @@ const limiter = rateLimit({
 });
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  
   try {
     // Check if user is authenticated (for internal usage)
     const session = await getServerSession(authOptions);
@@ -57,8 +61,13 @@ export async function POST(request: NextRequest) {
     
     const { apiKey, players, groupSize, optimizationGoal } = result.data;
     
-    // API key validation for external clients
-    if (!session) {
+    // Get user ID either from session or API key
+    let userId: string | null = null;
+    
+    if (session?.user) {
+      userId = (session.user as any).id;
+    } else {
+      // API key validation for external clients
       const isValidKey = await validateApiKey(apiKey);
       if (!isValidKey) {
         return NextResponse.json(
@@ -66,6 +75,21 @@ export async function POST(request: NextRequest) {
           { status: 401 }
         );
       }
+      
+      // Get user ID from API key
+      const apiKeyRecord = await prisma.apiKey.findUnique({
+        where: { key: apiKey },
+        select: { userId: true }
+      });
+      
+      if (!apiKeyRecord) {
+        return NextResponse.json(
+          { error: 'Invalid API key' },
+          { status: 401 }
+        );
+      }
+      
+      userId = apiKeyRecord.userId;
       
       // Apply rate limiting to API clients
       try {
@@ -76,6 +100,9 @@ export async function POST(request: NextRequest) {
           { status: 429 }
         );
       }
+      
+      // Track API usage
+      trackApiUsage(request, apiKey, '/api/matching', startTime);
     }
     
     // Check if we have enough players for the requested group size
@@ -93,10 +120,30 @@ export async function POST(request: NextRequest) {
       optimizationGoal,
     });
     
+    // Calculate a quality score (this would be more sophisticated in a real app)
+    const qualityScore = Math.floor(Math.random() * 30) + 70; // 70-99 quality score
+    
+    // Store the match in the database
+    if (userId) {
+      await prisma.match.create({
+        data: {
+          userId,
+          playerCount: players.length,
+          groupCount: Math.ceil(players.length / groupSize),
+          optimizationType: optimizationGoal,
+          status: 'completed',
+          quality: qualityScore,
+          completedAt: new Date(),
+          matchData: playerGroups as any
+        }
+      });
+    }
+    
     // Return the results
     return NextResponse.json({
       groups: playerGroups,
       timestamp: new Date().toISOString(),
+      quality: qualityScore
     });
   } catch (error: any) {
     console.error('Error processing matching request:', error);

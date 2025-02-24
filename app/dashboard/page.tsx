@@ -20,6 +20,7 @@ interface Match {
 }
 
 interface UserData {
+  apiKey: string;
   stats: UserStats;
   recentMatches: Match[];
   totalMatchCount: number;
@@ -31,10 +32,10 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [apiKey, setApiKey] = useState<string | null>(null);
   const [isGeneratingKey, setIsGeneratingKey] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [userData, setUserData] = useState<UserData>({
+    apiKey: '',
     stats: {
       totalMatches: 0,
       apiUsage: 0,
@@ -55,8 +56,6 @@ export default function DashboardPage() {
 
     // Fetch user data when session is available
     if (status === 'authenticated' && session?.user) {
-      setApiKey((session.user as any).apiKey || 'No API key found');
-      
       // Fetch user-specific data from our API
       fetchUserData();
     }
@@ -73,7 +72,21 @@ export default function DashboardPage() {
       }
       
       const data = await response.json();
-      setUserData(data);
+      
+      // Handle the case where there's no data yet
+      if (data.recentMatches.length === 0 && data.stats.totalMatches === 0) {
+        setUserData({
+          ...data,
+          stats: {
+            totalMatches: 0,
+            apiUsage: 0,
+            averageMatchQuality: 0
+          }
+        });
+      } else {
+        setUserData(data);
+      }
+      
       setCurrentPage(data.currentPage);
       setError(null);
     } catch (err: any) {
@@ -111,7 +124,11 @@ export default function DashboardPage() {
       }
       
       const data = await response.json();
-      setApiKey(data.apiKey);
+      // Update the API key in our userData state
+      setUserData(prevData => ({
+        ...prevData,
+        apiKey: data.apiKey
+      }));
       alert('New API key generated successfully!');
     } catch (err: any) {
       console.error('Failed to generate new API key:', err);
@@ -241,12 +258,34 @@ export default function DashboardPage() {
                     Your Average Match Quality
                   </dt>
                   <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                    {userData.stats.averageMatchQuality}%
+                    {userData.stats.averageMatchQuality > 0 ? `${userData.stats.averageMatchQuality}%` : 'N/A'}
                   </dd>
                 </dl>
               </div>
             </div>
           </div>
+          
+          {userData.stats.totalMatches === 0 && userData.stats.apiUsage === 0 && (
+            <div className="mb-8 bg-blue-50 p-4 rounded-md">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3 flex-1 md:flex md:justify-between">
+                  <p className="text-sm text-blue-700">
+                    Your dashboard will show real-time statistics once you start using your API key. Use the API key shown below to make requests to our API.
+                  </p>
+                  <p className="mt-3 text-sm md:mt-0 md:ml-6">
+                    <a href="https://docs.circuit.com" className="whitespace-nowrap font-medium text-blue-700 hover:text-blue-600">
+                      View API docs <span aria-hidden="true">&rarr;</span>
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* API Keys */}
           <div className="mb-8 bg-white shadow overflow-hidden sm:rounded-lg">
@@ -277,10 +316,10 @@ export default function DashboardPage() {
                   <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                     <div className="flex items-center">
                       <span className="font-mono bg-gray-100 px-2 py-1 rounded mr-2 overflow-x-auto max-w-xs">
-                        {apiKey}
+                        {userData.apiKey}
                       </span>
                       <button 
-                        onClick={() => copyToClipboard(apiKey || '')}
+                        onClick={() => copyToClipboard(userData.apiKey)}
                         className="text-indigo-600 hover:text-indigo-900 whitespace-nowrap"
                       >
                         Copy
