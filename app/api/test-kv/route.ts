@@ -1,5 +1,9 @@
-import { kv } from '@vercel/kv';
+import { createClient } from '@vercel/kv';
 import { NextResponse } from 'next/server';
+
+const kv = createClient({
+  url: process.env.KV_URL || '',
+});
 
 export async function GET() {
   try {
@@ -18,7 +22,8 @@ export async function GET() {
     console.error('KV test error:', error);
     return NextResponse.json({ 
       success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      url: process.env.KV_URL 
     }, { status: 500 });
   }
 } 
