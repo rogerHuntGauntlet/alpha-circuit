@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generatePlayerGroups, type GroupingRequest } from '@/lib/openai';
+import { generatePlayerGroups, type GroupingRequest } from '@/lib/openai/index';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { validateApiKey } from '@/lib/api-keys';
+import { rateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
 
 // Schema for the request body
@@ -28,8 +32,17 @@ const matchingRequestSchema = z.object({
   optimizationGoal: z.enum(['social', 'skill', 'balanced']),
 });
 
+// Rate limit configuration
+const limiter = rateLimit({
+  interval: 60 * 1000, // 1 minute
+  uniqueTokenPerInterval: 100,
+});
+
 export async function POST(request: NextRequest) {
   try {
+    // Check if user is authenticated (for internal usage)
+    const session = await getServerSession(authOptions);
+    
     // Parse the request body
     const body = await request.json();
     
@@ -44,13 +57,25 @@ export async function POST(request: NextRequest) {
     
     const { apiKey, players, groupSize, optimizationGoal } = result.data;
     
-    // API key validation would happen here in a real implementation
-    // This is just a placeholder
-    if (apiKey !== 'test-api-key') {
-      return NextResponse.json(
-        { error: 'Invalid API key' },
-        { status: 401 }
-      );
+    // API key validation for external clients
+    if (!session) {
+      const isValidKey = await validateApiKey(apiKey);
+      if (!isValidKey) {
+        return NextResponse.json(
+          { error: 'Invalid API key' },
+          { status: 401 }
+        );
+      }
+      
+      // Apply rate limiting to API clients
+      try {
+        await limiter.check(20, apiKey); // 20 requests per minute per API key
+      } catch (error) {
+        return NextResponse.json(
+          { error: 'Rate limit exceeded' },
+          { status: 429 }
+        );
+      }
     }
     
     // Check if we have enough players for the requested group size
@@ -70,7 +95,6 @@ export async function POST(request: NextRequest) {
     
     // Return the results
     return NextResponse.json({
-      matchId: 'match_' + Date.now(), // In a real app, this would be a database ID
       groups: playerGroups,
       timestamp: new Date().toISOString(),
     });
