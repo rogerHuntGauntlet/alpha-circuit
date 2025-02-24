@@ -1,12 +1,81 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    totalMatches: 0,
+    apiUsage: 0,
+    averageMatchQuality: 0
+  });
+
+  useEffect(() => {
+    // Redirect to login if not authenticated
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin');
+    }
+
+    // Set API key from session when available
+    if (status === 'authenticated' && session?.user) {
+      setApiKey((session.user as any).apiKey || 'No API key found');
+      
+      // In a real app, you would fetch user-specific stats from an API
+      // For now, we'll simulate with random data
+      setStats({
+        totalMatches: Math.floor(Math.random() * 200),
+        apiUsage: Math.floor(Math.random() * 10000),
+        averageMatchQuality: Math.floor(Math.random() * 30) + 70
+      });
+      
+      setIsLoading(false);
+    }
+  }, [status, session, router]);
+
+  // Function to copy API key to clipboard
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        alert('API key copied to clipboard!');
+      })
+      .catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-700">Loading dashboard...</h2>
+          <div className="mt-4 w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Circuit Dashboard</h1>
+          <div className="flex items-center">
+            <span className="mr-4 text-gray-600">
+              Welcome, {session?.user?.name || session?.user?.email || 'User'}
+            </span>
+            <button 
+              onClick={() => router.push('/api/auth/signout')}
+              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-700 text-sm font-medium"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </header>
       
@@ -21,7 +90,7 @@ export default function DashboardPage() {
                     Total Matches
                   </dt>
                   <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                    128
+                    {stats.totalMatches}
                   </dd>
                 </dl>
               </div>
@@ -34,7 +103,7 @@ export default function DashboardPage() {
                     API Usage
                   </dt>
                   <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                    5,234
+                    {stats.apiUsage.toLocaleString()}
                   </dd>
                 </dl>
               </div>
@@ -47,7 +116,7 @@ export default function DashboardPage() {
                     Average Match Quality
                   </dt>
                   <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                    87%
+                    {stats.averageMatchQuality}%
                   </dd>
                 </dl>
               </div>
@@ -62,7 +131,7 @@ export default function DashboardPage() {
                   API Keys
                 </h3>
                 <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                  Your API keys for integrating with Circuit.
+                  Your API key for integrating with Circuit.
                 </p>
               </div>
               <button
@@ -76,29 +145,17 @@ export default function DashboardPage() {
               <dl>
                 <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                   <dt className="text-sm font-medium text-gray-500">
-                    Production API Key
+                    Your API Key
                   </dt>
                   <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                     <div className="flex items-center">
                       <span className="font-mono bg-gray-100 px-2 py-1 rounded mr-2">
-                        circuit_prod_xxxxxxxxxxxxxxxxxxxxxxxx
+                        {apiKey}
                       </span>
-                      <button className="text-indigo-600 hover:text-indigo-900">
-                        Copy
-                      </button>
-                    </div>
-                  </dd>
-                </div>
-                <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">
-                    Development API Key
-                  </dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    <div className="flex items-center">
-                      <span className="font-mono bg-gray-100 px-2 py-1 rounded mr-2">
-                        circuit_dev_xxxxxxxxxxxxxxxxxxxxxxxx
-                      </span>
-                      <button className="text-indigo-600 hover:text-indigo-900">
+                      <button 
+                        onClick={() => copyToClipboard(apiKey || '')}
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
                         Copy
                       </button>
                     </div>
@@ -140,7 +197,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
                         <p>
-                          Created 2 hours ago
+                          Created {Math.floor(Math.random() * 24) + 1} hours ago
                         </p>
                       </div>
                     </div>
