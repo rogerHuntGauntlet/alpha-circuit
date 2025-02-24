@@ -211,6 +211,12 @@ export default function DashboardPage() {
             <span className="mr-4 text-gray-600">
               Welcome, {session?.user?.name || session?.user?.email || 'User'}
             </span>
+            <Link 
+              href="/documentation"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium mr-2"
+            >
+              API Documentation
+            </Link>
             <button 
               onClick={() => router.push('/api/auth/signout')}
               className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-700 text-sm font-medium"
@@ -328,6 +334,218 @@ export default function DashboardPage() {
                   </dd>
                 </div>
               </dl>
+            </div>
+          </div>
+          
+          {/* API Documentation */}
+          <div className="mb-8 bg-white shadow overflow-hidden sm:rounded-lg">
+            <div className="px-4 py-5 sm:px-6">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">
+                API Documentation
+              </h3>
+              <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                Learn how to integrate Circuit's matching API into your application.
+              </p>
+            </div>
+            <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+              <div className="prose max-w-none">
+                <h4 className="text-base font-medium text-gray-900 mb-2">Quick Start Guide</h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  To use our API, you'll need to make POST requests to our matching endpoint with your API key and player data.
+                </p>
+                
+                <h4 className="text-base font-medium text-gray-900 mb-2">Endpoint</h4>
+                <div className="bg-gray-100 p-2 rounded font-mono text-sm mb-4">
+                  POST https://api.circuit.com/api/matching
+                </div>
+                
+                <h4 className="text-base font-medium text-gray-900 mb-2">Request Structure</h4>
+                <p className="text-sm text-gray-600 mb-2">
+                  Your request must include your API key and conform to the following structure:
+                </p>
+                <div className="bg-gray-100 p-2 rounded font-mono text-sm mb-4 overflow-x-auto">
+                  {`{
+  "apiKey": "your_api_key",
+  "players": [
+    {
+      "id": "player1",
+      "interests": ["rpg", "strategy"],
+      "communicationStyle": "chatty",
+      "platformPreference": "pc",
+      "playTimes": ["evening", "weekend"],
+      "language": "english",
+      "skillLevel": 7,
+      "contentTolerance": 5,
+      "themePreference": "Action"
+    },
+    // more players...
+  ],
+  "groupSize": 4,
+  "optimizationGoal": "social" // or "skill" or "balanced"
+}`}
+                </div>
+                
+                <h4 className="text-base font-medium text-gray-900 mb-2">What Happens When You Call Our API</h4>
+                <div className="space-y-4 text-sm text-gray-600">
+                  <p>
+                    When you send a request to our matching API, here's exactly what happens:
+                  </p>
+                  
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>
+                      <span className="font-medium">Authentication:</span> We validate your API key to ensure you have access to our service.
+                    </li>
+                    <li>
+                      <span className="font-medium">Request Validation:</span> We check that your request contains all required fields and that they're properly formatted.
+                    </li>
+                    <li>
+                      <span className="font-medium">Rate Limiting:</span> We check that you haven't exceeded your rate limit (20 requests per minute).
+                    </li>
+                    <li>
+                      <span className="font-medium">Usage Tracking:</span> We log your API call to your account for your dashboard statistics.
+                    </li>
+                    <li>
+                      <span className="font-medium">AI Processing:</span> Our advanced matching algorithm analyzes your players' data to create optimal groups.
+                    </li>
+                    <li>
+                      <span className="font-medium">Quality Scoring:</span> We calculate a quality score for your match based on how well the groups satisfy your optimization goal.
+                    </li>
+                    <li>
+                      <span className="font-medium">Response Generation:</span> We format the results and send them back to you.
+                    </li>
+                  </ol>
+                  
+                  <h5 className="text-base font-medium text-gray-900 mt-4 mb-2">Example Case</h5>
+                  
+                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                    <p className="font-medium mb-2">Example Request:</p>
+                    <div className="bg-gray-100 p-2 rounded font-mono text-xs mb-4 overflow-x-auto">
+                      {`// POST to https://api.circuit.com/api/matching
+{
+  "apiKey": "circuit_a1b2c3d4e5f6g7h8i9j0",
+  "players": [
+    {
+      "id": "player1",
+      "interests": ["rpg", "strategy"],
+      "communicationStyle": "chatty",
+      "platformPreference": "pc",
+      "playTimes": ["evening", "weekend"],
+      "language": "english",
+      "skillLevel": 8,
+      "contentTolerance": 7,
+      "themePreference": "Action"
+    },
+    {
+      "id": "player2",
+      "interests": ["fps", "moba"],
+      "communicationStyle": "quiet",
+      "platformPreference": "pc",
+      "playTimes": ["evening", "night"],
+      "language": "english",
+      "skillLevel": 9,
+      "contentTolerance": 8,
+      "themePreference": "Action"
+    },
+    {
+      "id": "player3",
+      "interests": ["rpg", "mmorpg"],
+      "communicationStyle": "chatty",
+      "platformPreference": "console",
+      "playTimes": ["weekend"],
+      "language": "spanish",
+      "skillLevel": 7,
+      "contentTolerance": 5,
+      "themePreference": "Neutral"
+    },
+    {
+      "id": "player4",
+      "interests": ["strategy", "card games"],
+      "communicationStyle": "moderate",
+      "platformPreference": "mobile",
+      "playTimes": ["morning", "evening"],
+      "language": "english",
+      "skillLevel": 6,
+      "contentTolerance": 4,
+      "themePreference": "Soothing"
+    }
+  ],
+  "groupSize": 2,
+  "optimizationGoal": "social"
+}`}
+                    </div>
+                    
+                    <p className="font-medium mb-2">Example Response:</p>
+                    <div className="bg-gray-100 p-2 rounded font-mono text-xs overflow-x-auto">
+                      {`{
+  "groups": [
+    {
+      "groupId": "group1",
+      "players": ["player1", "player3"],
+      "compatibilityScore": 0.85,
+      "commonInterests": ["rpg"],
+      "compatibilityFactors": {
+        "interests": "high",
+        "communicationStyle": "high",
+        "playTimes": "medium"
+      }
+    },
+    {
+      "groupId": "group2",
+      "players": ["player2", "player4"],
+      "compatibilityScore": 0.72,
+      "commonInterests": [],
+      "compatibilityFactors": {
+        "interests": "low",
+        "communicationStyle": "medium",
+        "playTimes": "high"
+      }
+    }
+  ],
+  "timestamp": "2023-06-15T14:22:33.456Z",
+  "quality": 78
+}`}
+                    </div>
+                    
+                    <div className="mt-4 text-sm">
+                      <p className="font-medium mb-1">What happened behind the scenes:</p>
+                      <ol className="list-decimal pl-5 space-y-1">
+                        <li>We validated your API key "circuit_a1b2c3d4e5f6g7h8i9j0"</li>
+                        <li>We checked your request format and confirmed all required fields</li>
+                        <li>We verified you hadn't exceeded your rate limit</li>
+                        <li>We logged this API call to your account (visible in your dashboard stats)</li>
+                        <li>Our algorithm analyzed the 4 players and created 2 groups of 2 players each</li>
+                        <li>We optimized for "social" compatibility as requested</li>
+                        <li>We calculated an overall quality score of 78 for this match</li>
+                        <li>We stored this match in your history (visible in your recent matches)</li>
+                        <li>We returned the formatted response with detailed group information</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+                
+                <h4 className="text-base font-medium text-gray-900 mt-6 mb-2">Rate Limits & Usage</h4>
+                <p className="text-sm text-gray-600 mb-2">
+                  • Standard accounts: 20 requests per minute<br />
+                  • All API usage is tracked and visible in your dashboard<br />
+                  • Each successful match is stored in your match history
+                </p>
+                
+                <div className="flex justify-between items-center mt-6">
+                  <Link 
+                    href="/documentation"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    View Full Documentation
+                  </Link>
+                  
+                  <Link 
+                    href="/api-playground"
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Try API Playground
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
           
