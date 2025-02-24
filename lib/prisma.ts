@@ -1,11 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { createClient } from '@vercel/kv';
 
-declare global {
-  var prisma: PrismaClient | undefined;
-}
+// Create a KV client to replace Prisma
+export const kv = createClient({
+  url: process.env.KV_REST_API_URL || '',
+  token: process.env.KV_REST_API_TOKEN || ''
+});
 
-export const prisma = global.prisma || new PrismaClient();
-
-if (process.env.NODE_ENV !== 'production') {
-  global.prisma = prisma;
-} 
+// This file is kept to maintain compatibility with existing imports
+// but now uses Vercel KV instead of Prisma 

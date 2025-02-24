@@ -26,7 +26,6 @@
   "homepage": "https://github.com/rogerHuntGauntlet/alpha-circuit#readme",
   "dependencies": {
     "@auth/core": "^0.34.2",
-    "@prisma/client": "^6.4.1",
     "@vercel/kv": "^3.0.0",
     "bcryptjs": "^3.0.2",
     "next": "^14.1.0",
@@ -42,7 +41,6 @@
     "@types/react-dom": "^19.0.4",
     "autoprefixer": "^10.4.14",
     "postcss": "^8.4.31",
-    "prisma": "^6.4.1",
     "tailwindcss": "^3.3.0",
     "typescript": "5.7.3"
   }

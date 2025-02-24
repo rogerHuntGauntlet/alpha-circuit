@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { randomUUID } from 'crypto';
-import { prisma } from '@/lib/prisma';
+import { kv } from '@/lib/prisma';
 import { generateApiKey, getUserApiKeys } from '@/lib/api-keys';
 import { getUserApiStats } from '@/lib/api-usage';
 

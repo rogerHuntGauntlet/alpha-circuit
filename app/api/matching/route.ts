@@ -5,8 +5,9 @@ import { authOptions } from '@/lib/auth';
 import { validateApiKey } from '@/lib/api-keys';
 import { rateLimit } from '@/lib/rate-limit';
 import { trackApiUsage } from '@/lib/api-usage';
-import { prisma } from '@/lib/prisma';
+import { kv } from '@/lib/prisma';
 import { z } from 'zod';
+import { randomUUID } from 'crypto';
 
 // Schema for the request body
 const matchingRequestSchema = z.object({
@@ -77,10 +78,7 @@ export async function POST(request: NextRequest) {
       }
       
       // Get user ID from API key
-      const apiKeyRecord = await prisma.apiKey.findUnique({
-        where: { key: apiKey },
-        select: { userId: true }
-      });
+      const apiKeyRecord = await kv.get(`apikey:${apiKey}`) as { userId: string } | null;
       
       if (!apiKeyRecord) {
         return NextResponse.json(
@@ -125,18 +123,25 @@ export async function POST(request: NextRequest) {
     
     // Store the match in the database
     if (userId) {
-      await prisma.match.create({
-        data: {
-          userId,
-          playerCount: players.length,
-          groupCount: Math.ceil(players.length / groupSize),
-          optimizationType: optimizationGoal,
-          status: 'completed',
-          quality: qualityScore,
-          completedAt: new Date(),
-          matchData: playerGroups as any
-        }
-      });
+      const matchId = `match:${randomUUID()}`;
+      const matchData = {
+        id: matchId,
+        userId,
+        playerCount: players.length,
+        groupCount: Math.ceil(players.length / groupSize),
+        optimizationType: optimizationGoal,
+        status: 'completed',
+        quality: qualityScore,
+        completedAt: Date.now(),
+        createdAt: Date.now(),
+        matchData: playerGroups
+      };
+      
+      // Store the match data
+      await kv.set(matchId, matchData);
+      
+      // Add to user's matches list
+      await kv.lpush(`user:${userId}:matches`, matchId);
     }
     
     // Return the results
