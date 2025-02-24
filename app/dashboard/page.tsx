@@ -5,16 +5,41 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
+// Define types for our user data
+interface UserStats {
+  totalMatches: number;
+  apiUsage: number;
+  averageMatchQuality: number;
+}
+
+interface Match {
+  id: string;
+  status: string;
+  details: string;
+  createdAt: string;
+}
+
+interface UserData {
+  stats: UserStats;
+  recentMatches: Match[];
+  totalMatchCount: number;
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [stats, setStats] = useState({
-    totalMatches: 0,
-    apiUsage: 0,
-    averageMatchQuality: 0
+  const [userData, setUserData] = useState<UserData>({
+    stats: {
+      totalMatches: 0,
+      apiUsage: 0,
+      averageMatchQuality: 0
+    },
+    recentMatches: [],
+    totalMatchCount: 0
   });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Redirect to login if not authenticated
@@ -22,21 +47,35 @@ export default function DashboardPage() {
       router.push('/auth/signin');
     }
 
-    // Set API key from session when available
+    // Fetch user data when session is available
     if (status === 'authenticated' && session?.user) {
       setApiKey((session.user as any).apiKey || 'No API key found');
       
-      // In a real app, you would fetch user-specific stats from an API
-      // For now, we'll simulate with random data
-      setStats({
-        totalMatches: Math.floor(Math.random() * 200),
-        apiUsage: Math.floor(Math.random() * 10000),
-        averageMatchQuality: Math.floor(Math.random() * 30) + 70
-      });
-      
-      setIsLoading(false);
+      // Fetch user-specific data from our API
+      fetchUserData();
     }
   }, [status, session, router]);
+
+  // Function to fetch user data from our API
+  const fetchUserData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/user');
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching user data: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      setUserData(data);
+      setError(null);
+    } catch (err: any) {
+      console.error('Failed to fetch user data:', err);
+      setError('Failed to load your dashboard data. Please try again later.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Function to copy API key to clipboard
   const copyToClipboard = (text: string) => {
@@ -49,12 +88,47 @@ export default function DashboardPage() {
       });
   };
 
+  // Function to generate a new API key
+  const generateNewApiKey = async () => {
+    // In a real app, this would call an API endpoint to generate a new key
+    alert('This feature is not implemented yet.');
+  };
+
+  // Format date to relative time (e.g., "2 hours ago")
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-gray-700">Loading dashboard...</h2>
           <div className="mt-4 w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold text-red-600 mb-4">Error</h2>
+          <p className="text-gray-700 mb-4">{error}</p>
+          <button 
+            onClick={fetchUserData}
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
@@ -90,7 +164,7 @@ export default function DashboardPage() {
                     Total Matches
                   </dt>
                   <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                    {stats.totalMatches}
+                    {userData.stats.totalMatches}
                   </dd>
                 </dl>
               </div>
@@ -103,7 +177,7 @@ export default function DashboardPage() {
                     API Usage
                   </dt>
                   <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                    {stats.apiUsage.toLocaleString()}
+                    {userData.stats.apiUsage.toLocaleString()}
                   </dd>
                 </dl>
               </div>
@@ -116,7 +190,7 @@ export default function DashboardPage() {
                     Average Match Quality
                   </dt>
                   <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                    {stats.averageMatchQuality}%
+                    {userData.stats.averageMatchQuality}%
                   </dd>
                 </dl>
               </div>
@@ -136,6 +210,7 @@ export default function DashboardPage() {
               </div>
               <button
                 type="button"
+                onClick={generateNewApiKey}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 Generate New Key
@@ -176,28 +251,28 @@ export default function DashboardPage() {
               </p>
             </div>
             <ul className="divide-y divide-gray-200">
-              {[1, 2, 3, 4, 5].map((item) => (
-                <li key={item}>
+              {userData.recentMatches.map((match) => (
+                <li key={match.id}>
                   <div className="px-4 py-4 sm:px-6">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-indigo-600 truncate">
-                        Match #{item}
+                        Match #{match.id}
                       </p>
                       <div className="ml-2 flex-shrink-0 flex">
                         <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                          Completed
+                          {match.status}
                         </p>
                       </div>
                     </div>
                     <div className="mt-2 sm:flex sm:justify-between">
                       <div className="sm:flex">
                         <p className="flex items-center text-sm text-gray-500">
-                          32 players • 8 groups • social optimization
+                          {match.details}
                         </p>
                       </div>
                       <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
                         <p>
-                          Created {Math.floor(Math.random() * 24) + 1} hours ago
+                          Created {formatRelativeTime(match.createdAt)}
                         </p>
                       </div>
                     </div>
@@ -224,8 +299,8 @@ export default function DashboardPage() {
                 <div>
                   <p className="text-sm text-gray-700">
                     Showing <span className="font-medium">1</span> to{' '}
-                    <span className="font-medium">5</span> of{' '}
-                    <span className="font-medium">12</span> results
+                    <span className="font-medium">{userData.recentMatches.length}</span> of{' '}
+                    <span className="font-medium">{userData.totalMatchCount}</span> results
                   </p>
                 </div>
                 <div>
