@@ -1,0 +1,121 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "Alpha Algorithm API",
+		"description": "Collection for testing the Alpha Algorithm API endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Basic Matching API",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"apiKey\": \"test-key\",\n  \"players\": [\n    {\n      \"id\": \"player1\",\n      \"interests\": [\"RPG\", \"Strategy\", \"FPS\"],\n      \"communicationStyle\": \"casual\",\n      \"platformPreference\": \"PC\",\n      \"playTimes\": [\"evening\", \"weekend\"],\n      \"language\": \"en\",\n      \"skillLevel\": 7,\n      \"contentTolerance\": 8,\n      \"themePreference\": \"Action\"\n    },\n    {\n      \"id\": \"player2\",\n      \"interests\": [\"RPG\", \"MOBA\", \"Strategy\"],\n      \"communicationStyle\": \"competitive\",\n      \"platformPreference\": \"PC\",\n      \"playTimes\": [\"evening\", \"night\"],\n      \"language\": \"en\",\n      \"skillLevel\": 8,\n      \"contentTolerance\": 6,\n      \"themePreference\": \"Action\"\n    }\n  ],\n  \"groupSize\": 2,\n  \"optimizationGoal\": \"balanced\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/matching",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"matching"
+					]
+				},
+				"description": "Basic matching API that uses a simple algorithm to group players"
+			},
+			"response": []
+		},
+		{
+			"name": "AI-Powered Matching API",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"apiKey\": \"test-key\",\n  \"players\": [\n    {\n      \"id\": \"player1\",\n      \"interests\": [\"RPG\", \"Strategy\", \"FPS\"],\n      \"communicationStyle\": \"casual\",\n      \"platformPreference\": \"PC\",\n      \"playTimes\": [\"evening\", \"weekend\"],\n      \"language\": \"en\",\n      \"skillLevel\": 7,\n      \"contentTolerance\": 8,\n      \"themePreference\": \"Action\",\n      \"pastBehavior\": {\n        \"toxicityReports\": 0,\n        \"friendRequests\": 5\n      }\n    },\n    {\n      \"id\": \"player2\",\n      \"interests\": [\"RPG\", \"MOBA\", \"Strategy\"],\n      \"communicationStyle\": \"competitive\",\n      \"platformPreference\": \"PC\",\n      \"playTimes\": [\"evening\", \"night\"],\n      \"language\": \"en\",\n      \"skillLevel\": 8,\n      \"contentTolerance\": 6,\n      \"themePreference\": \"Action\",\n      \"pastBehavior\": {\n        \"toxicityReports\": 1,\n        \"friendRequests\": 3\n      }\n    },\n    {\n      \"id\": \"player3\",\n      \"interests\": [\"FPS\", \"Battle Royale\", \"Action\"],\n      \"communicationStyle\": \"casual\",\n      \"platformPreference\": \"Console\",\n      \"playTimes\": [\"weekend\", \"night\"],\n      \"language\": \"en\",\n      \"skillLevel\": 6,\n      \"contentTolerance\": 9,\n      \"themePreference\": \"Action\",\n      \"pastBehavior\": {\n        \"toxicityReports\": 0,\n        \"friendRequests\": 2\n      }\n    },\n    {\n      \"id\": \"player4\",\n      \"interests\": [\"Strategy\", \"Simulation\", \"RPG\"],\n      \"communicationStyle\": \"quiet\",\n      \"platformPreference\": \"PC\",\n      \"playTimes\": [\"morning\", \"evening\"],\n      \"language\": \"en\",\n      \"skillLevel\": 5,\n      \"contentTolerance\": 4,\n      \"themePreference\": \"Soothing\",\n      \"pastBehavior\": {\n        \"toxicityReports\": 0,\n        \"friendRequests\": 1\n      }\n    }\n  ],\n  \"groupSize\": 2,\n  \"optimizationGoal\": \"balanced\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/matching/ai",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"matching",
+						"ai"
+					]
+				},
+				"description": "Enhanced matching API that uses OpenAI to create optimal player groups"
+			},
+			"response": []
+		},
+		{
+			"name": "Test Endpoint (GET)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/api/matching/test?apiKey=test-key",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"matching",
+						"test"
+					],
+					"query": [
+						{
+							"key": "apiKey",
+							"value": "test-key"
+						}
+					]
+				},
+				"description": "Simple GET endpoint that returns a sample response"
+			},
+			"response": []
+		},
+		{
+			"name": "Direct Access Endpoint (GET)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/api/matching/direct",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"matching",
+						"direct"
+					]
+				},
+				"description": "Direct access endpoint that doesn't require authentication"
+			},
+			"response": []
+		}
+	]
+} 

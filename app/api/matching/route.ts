@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { isValidApiKey } from '../auth/keys';
 
 // Define types for our API
 interface Player {
@@ -45,13 +44,100 @@ interface MatchingResponse {
   quality: number;
 }
 
-// This is a mock implementation of the matching API
+// Simple function to calculate compatibility between two players
+function calculateCompatibility(player1: Player, player2: Player): number {
+  let score = 0;
+  
+  // Interest overlap
+  const player1Interests = player1.interests || [];
+  const player2Interests = player2.interests || [];
+  
+  const sharedInterests = player1Interests.filter(interest => 
+    player2Interests.includes(interest)
+  ).length;
+  
+  const maxInterests = Math.max(player1Interests.length, player2Interests.length);
+  score += maxInterests > 0 ? (sharedInterests / maxInterests) * 25 : 0;
+  
+  // Language match
+  if (player1.language === player2.language) {
+    score += 15;
+  }
+  
+  // Platform preference
+  if (player1.platformPreference === player2.platformPreference) {
+    score += 10;
+  }
+  
+  // Skill level compatibility (closer is better)
+  const player1Skill = player1.skillLevel || 5;
+  const player2Skill = player2.skillLevel || 5;
+  const skillDifference = Math.abs(player1Skill - player2Skill);
+  score += Math.max(0, 15 - (skillDifference * 3));
+  
+  return Math.min(score, 100);
+}
+
+// Simple function to create player groups
+function createBasicGroups(players: Player[], groupSize: number): Group[] {
+  const groups: Group[] = [];
+  
+  // Create groups by simply chunking the players array
+  for (let i = 0; i < players.length; i += groupSize) {
+    const groupPlayers = players.slice(i, i + groupSize);
+    const playerIds = groupPlayers.map(p => p.id);
+    
+    // Calculate average compatibility score for the group
+    let totalScore = 0;
+    let pairCount = 0;
+    
+    for (let j = 0; j < groupPlayers.length; j++) {
+      for (let k = j + 1; k < groupPlayers.length; k++) {
+        totalScore += calculateCompatibility(groupPlayers[j], groupPlayers[k]);
+        pairCount++;
+      }
+    }
+    
+    const compatibilityScore = pairCount > 0 ? totalScore / pairCount : 50;
+    
+    // Find common interests
+    let commonInterests: string[] = [];
+    if (groupPlayers.length > 0) {
+      const allInterests = groupPlayers.map(p => p.interests || []);
+      if (allInterests.length > 0 && allInterests[0].length > 0) {
+        commonInterests = [...allInterests[0]];
+        for (let j = 1; j < allInterests.length; j++) {
+          commonInterests = commonInterests.filter(interest => 
+            allInterests[j].includes(interest)
+          );
+        }
+      }
+    }
+    
+    groups.push({
+      groupId: `group${groups.length + 1}`,
+      players: playerIds,
+      compatibilityScore,
+      commonInterests,
+      compatibilityFactors: {
+        interests: 'medium',
+        communicationStyle: 'medium',
+        playTimes: 'medium',
+        skillLevel: 'medium'
+      }
+    });
+  }
+  
+  return groups;
+}
+
+// This is a simplified implementation of the matching API
 export async function POST(request: NextRequest) {
   try {
     // Parse the request body
     const body = await request.json();
     
-    // Validate required fields
+    // Validate API key
     if (!body.apiKey) {
       return NextResponse.json(
         { error: 'Missing API key' },
@@ -59,6 +145,18 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Use our secure API key validation
+    if (!isValidApiKey(body.apiKey)) {
+      // Log the attempt but don't reveal which part of the validation failed
+      console.warn(`Invalid API key attempt: ${body.apiKey.substring(0, 4)}****`);
+      
+      return NextResponse.json(
+        { error: 'Invalid API key' },
+        { status: 403 }
+      );
+    }
+    
+    // Validate required fields
     if (!body.players || !Array.isArray(body.players) || body.players.length < 2) {
       return NextResponse.json(
         { error: 'At least 2 players are required' },
@@ -80,77 +178,35 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // In a real implementation, we would:
-    // 1. Validate the API key against the database
-    // 2. Check rate limits
-    // 3. Process the request with OpenAI
-    // 4. Store the results
+    // Normalize player data
+    const players = body.players.map((player: Player) => ({
+      id: player.id || `player-${Math.random().toString(36).substring(2, 9)}`,
+      interests: Array.isArray(player.interests) ? player.interests : [],
+      communicationStyle: player.communicationStyle || 'neutral',
+      platformPreference: player.platformPreference || 'any',
+      playTimes: Array.isArray(player.playTimes) ? player.playTimes : ['anytime'],
+      language: player.language || 'en',
+      skillLevel: typeof player.skillLevel === 'number' ? player.skillLevel : 5,
+      contentTolerance: typeof player.contentTolerance === 'number' ? player.contentTolerance : 5,
+      themePreference: player.themePreference || 'Neutral'
+    }));
     
-    // For now, we'll return a mock response based on the input
-    const players: Player[] = body.players;
     const groupSize: number = body.groupSize;
     const optimizationGoal: 'social' | 'skill' | 'balanced' = body.optimizationGoal;
     
-    // Calculate how many groups we need
-    const numGroups = Math.ceil(players.length / groupSize);
+    console.log('Processing matching request with players:', JSON.stringify(players, null, 2));
     
-    // Create groups
-    const groups: Group[] = [];
-    for (let i = 0; i < numGroups; i++) {
-      const groupPlayers = players
-        .slice(i * groupSize, Math.min((i + 1) * groupSize, players.length))
-        .map((player: Player) => player.id);
-      
-      // Find common interests for the group
-      const interests = players
-        .filter((player: Player) => groupPlayers.includes(player.id))
-        .map((player: Player) => player.interests || []);
-      
-      const commonInterests = interests.length > 0 
-        ? interests.reduce((acc: string[], curr: string[]) => 
-            acc.filter((interest: string) => curr.includes(interest))
-          )
-        : [];
-      
-      // Generate a random compatibility score between 0.65 and 0.95
-      const compatibilityScore = Math.round((0.65 + Math.random() * 0.3) * 100) / 100;
-      
-      // Create compatibility factors based on optimization goal
-      let compatibilityFactors: CompatibilityFactors = {};
-      
-      if (optimizationGoal === 'social') {
-        compatibilityFactors = {
-          interests: Math.random() > 0.5 ? 'high' : 'medium',
-          communicationStyle: Math.random() > 0.5 ? 'high' : 'medium',
-          playTimes: Math.random() > 0.5 ? 'high' : 'medium'
-        };
-      } else if (optimizationGoal === 'skill') {
-        compatibilityFactors = {
-          skillLevel: 'high',
-          interests: Math.random() > 0.5 ? 'medium' : 'low',
-          communicationStyle: Math.random() > 0.5 ? 'medium' : 'low'
-        };
-      } else {
-        compatibilityFactors = {
-          interests: Math.random() > 0.5 ? 'medium' : 'high',
-          skillLevel: Math.random() > 0.5 ? 'medium' : 'high',
-          communicationStyle: Math.random() > 0.5 ? 'medium' : 'low'
-        };
-      }
-      
-      groups.push({
-        groupId: `group${i + 1}`,
-        players: groupPlayers,
-        compatibilityScore,
-        commonInterests: commonInterests.slice(0, 3), // Limit to 3 common interests
-        compatibilityFactors
-      });
-    }
+    // Create groups using our simplified algorithm
+    const groups = createBasicGroups(players, groupSize);
+    
+    console.log('Created groups:', JSON.stringify(groups, null, 2));
     
     // Calculate overall quality score (0-100)
-    const quality = Math.round(
-      groups.reduce((sum, group) => sum + group.compatibilityScore, 0) / groups.length * 100
-    );
+    const quality = groups.length > 0 
+      ? Math.round(
+          groups.reduce((sum, group) => sum + group.compatibilityScore, 0) / groups.length * 100
+        )
+      : 50;
     
     // Return the response
     const response: MatchingResponse = {
