@@ -483,7 +483,7 @@ export default function DashboardPage() {
                   
                   <h4 className="text-base font-medium text-gray-900 mb-2">Endpoint</h4>
                   <div className="bg-gray-100 p-2 rounded font-mono text-sm mb-4">
-                    POST https://api.circuit.com/api/matching
+                    POST https://alpha-circuit.vercel.app/api/matching
                   </div>
                   
                   <h4 className="text-base font-medium text-gray-900 mb-2">Request Structure</h4>
@@ -550,7 +550,7 @@ export default function DashboardPage() {
                       <p className="font-medium mb-2">Example Request:</p>
                       <div className="bg-gray-800 p-4 rounded-lg font-mono text-sm mb-4 overflow-x-auto text-white">
                         <pre className="whitespace-pre-wrap">
-{`// POST to https://api.circuit.com/api/matching
+{`// POST to https://alpha-circuit.vercel.app/api/matching
 {
   "apiKey": "circuit_a1b2c3d4e5f6g7h8i9j0",
   "players": [

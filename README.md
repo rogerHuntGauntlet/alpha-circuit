@@ -81,4 +81,271 @@ npm run dev
 
 ## License
 
-Proprietary. All rights reserved. 
+Proprietary. All rights reserved.
+
+# Alpha Algorithm API Documentation
+
+## API Endpoints
+
+The Alpha Algorithm API provides several endpoints for player matching and group formation:
+
+### Main Matching API (POST)
+
+```
+https://alpha-circuit.vercel.app/api/matching
+```
+
+This endpoint uses a basic algorithm to group players based on compatibility.
+
+#### Request Format:
+
+```json
+{
+  "apiKey": "test-key",
+  "players": [
+    {
+      "id": "player1",
+      "interests": ["RPG", "Strategy", "FPS"],
+      "communicationStyle": "casual",
+      "platformPreference": "PC",
+      "playTimes": ["evening", "weekend"],
+      "language": "en",
+      "skillLevel": 7,
+      "contentTolerance": 8,
+      "themePreference": "Action"
+    },
+    {
+      "id": "player2",
+      "interests": ["RPG", "MOBA", "Strategy"],
+      "communicationStyle": "competitive",
+      "platformPreference": "PC",
+      "playTimes": ["evening", "night"],
+      "language": "en",
+      "skillLevel": 8,
+      "contentTolerance": 6,
+      "themePreference": "Action"
+    }
+  ],
+  "groupSize": 2,
+  "optimizationGoal": "balanced"
+}
+```
+
+#### Response Format:
+
+```json
+{
+  "groups": [
+    {
+      "groupId": "group1",
+      "players": ["player1", "player2"],
+      "compatibilityScore": 85,
+      "commonInterests": ["RPG", "Strategy"],
+      "compatibilityFactors": {
+        "interests": "high",
+        "communicationStyle": "medium",
+        "playTimes": "high",
+        "skillLevel": "high"
+      }
+    }
+  ],
+  "timestamp": "2023-06-15T12:34:56.789Z",
+  "quality": 85
+}
+```
+
+### AI-Powered Matching API (POST)
+
+```
+https://alpha-circuit.vercel.app/api/matching/ai
+```
+
+This enhanced endpoint uses OpenAI to create optimal player groups with more sophisticated analysis.
+
+#### Request Format:
+Same as the main matching API, with optional `pastBehavior` field:
+
+```json
+{
+  "apiKey": "test-key",
+  "players": [
+    {
+      "id": "player1",
+      "interests": ["RPG", "Strategy", "FPS"],
+      "communicationStyle": "casual",
+      "platformPreference": "PC",
+      "playTimes": ["evening", "weekend"],
+      "language": "en",
+      "skillLevel": 7,
+      "contentTolerance": 8,
+      "themePreference": "Action",
+      "pastBehavior": {
+        "toxicityReports": 0,
+        "friendRequests": 5
+      }
+    },
+    // More players...
+  ],
+  "groupSize": 2,
+  "optimizationGoal": "balanced"
+}
+```
+
+#### Response Format:
+
+```json
+{
+  "groups": [
+    {
+      "groupId": "group1",
+      "players": ["player1", "player2"],
+      "compatibilityScore": 85,
+      "commonInterests": ["RPG", "Strategy"],
+      "compatibilityFactors": {
+        "interests": "high",
+        "communicationStyle": "medium",
+        "playTimes": "high",
+        "skillLevel": "high"
+      },
+      "riskFactors": ["Platform differences may affect collaboration"]
+    }
+  ],
+  "timestamp": "2023-06-15T12:34:56.789Z",
+  "quality": 85,
+  "aiPowered": true
+}
+```
+
+### Test Endpoint (GET)
+
+```
+https://alpha-circuit.vercel.app/api/matching/test?apiKey=test-key
+```
+
+This endpoint returns a sample response for testing purposes.
+
+### Direct Access Endpoint (GET)
+
+```
+https://alpha-circuit.vercel.app/api/matching/direct
+```
+
+This endpoint returns a sample response without requiring authentication.
+
+## Authentication
+
+The API uses API keys for authentication. Valid test keys include:
+- `test-key`
+- `dev-key-123`
+- `prod-key-456`
+- `gauntlet-api-key`
+
+## Testing with cURL
+
+### Basic Matching API:
+
+```bash
+curl -X POST "https://alpha-circuit.vercel.app/api/matching" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "apiKey": "test-key",
+    "players": [
+      {
+        "id": "player1",
+        "interests": ["RPG", "Strategy", "FPS"],
+        "communicationStyle": "casual",
+        "platformPreference": "PC",
+        "playTimes": ["evening", "weekend"],
+        "language": "en",
+        "skillLevel": 7,
+        "contentTolerance": 8,
+        "themePreference": "Action"
+      },
+      {
+        "id": "player2",
+        "interests": ["RPG", "MOBA", "Strategy"],
+        "communicationStyle": "competitive",
+        "platformPreference": "PC",
+        "playTimes": ["evening", "night"],
+        "language": "en",
+        "skillLevel": 8,
+        "contentTolerance": 6,
+        "themePreference": "Action"
+      }
+    ],
+    "groupSize": 2,
+    "optimizationGoal": "balanced"
+  }'
+```
+
+### AI-Powered Matching API:
+
+```bash
+curl -X POST "https://alpha-circuit.vercel.app/api/matching/ai" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "apiKey": "test-key",
+    "players": [
+      {
+        "id": "player1",
+        "interests": ["RPG", "Strategy", "FPS"],
+        "communicationStyle": "casual",
+        "platformPreference": "PC",
+        "playTimes": ["evening", "weekend"],
+        "language": "en",
+        "skillLevel": 7,
+        "contentTolerance": 8,
+        "themePreference": "Action",
+        "pastBehavior": {
+          "toxicityReports": 0,
+          "friendRequests": 5
+        }
+      },
+      {
+        "id": "player2",
+        "interests": ["RPG", "MOBA", "Strategy"],
+        "communicationStyle": "competitive",
+        "platformPreference": "PC",
+        "playTimes": ["evening", "night"],
+        "language": "en",
+        "skillLevel": 8,
+        "contentTolerance": 6,
+        "themePreference": "Action",
+        "pastBehavior": {
+          "toxicityReports": 1,
+          "friendRequests": 3
+        }
+      }
+    ],
+    "groupSize": 2,
+    "optimizationGoal": "balanced"
+  }'
+```
+
+### Test Endpoint:
+
+```bash
+curl "https://alpha-circuit.vercel.app/api/matching/test?apiKey=test-key"
+```
+
+### Direct Access Endpoint:
+
+```bash
+curl "https://alpha-circuit.vercel.app/api/matching/direct"
+```
+
+## Testing with Postman
+
+You can also use Postman to test the API. Import the provided Postman collection file:
+```
+alpha-algorithm-api.postman_collection.json
+```
+
+## Error Handling
+
+The API returns standard HTTP status codes:
+- 200: Success
+- 400: Bad Request (missing or invalid parameters)
+- 401: Unauthorized (missing API key)
+- 403: Forbidden (invalid API key)
+- 500: Server Error 

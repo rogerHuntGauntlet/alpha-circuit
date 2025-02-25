@@ -1,0 +1,29 @@
+{
+  "apiKey": "test-key",
+  "players": [
+    {
+      "id": "player1",
+      "interests": ["RPG", "Strategy", "FPS"],
+      "communicationStyle": "casual",
+      "platformPreference": "PC",
+      "playTimes": ["evening", "weekend"],
+      "language": "en",
+      "skillLevel": 7,
+      "contentTolerance": 8,
+      "themePreference": "Action"
+    },
+    {
+      "id": "player2",
+      "interests": ["RPG", "MOBA", "Strategy"],
+      "communicationStyle": "competitive",
+      "platformPreference": "PC",
+      "playTimes": ["evening", "night"],
+      "language": "en",
+      "skillLevel": 8,
+      "contentTolerance": 6,
+      "themePreference": "Action"
+    }
+  ],
+  "groupSize": 2,
+  "optimizationGoal": "balanced"
+} 

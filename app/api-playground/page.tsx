@@ -310,7 +310,7 @@ export default function ApiPlayground() {
               <div className="prose max-w-none">
                 <h4 className="text-base font-medium text-gray-900 mb-2">Endpoint</h4>
                 <div className="bg-gray-100 p-2 rounded font-mono text-sm mb-4">
-                  POST https://api.circuit.com/api/matching
+                  POST https://alpha-circuit.vercel.app/api/matching
                 </div>
                 
                 <h4 className="text-base font-medium text-gray-900 mb-2">Required Parameters</h4>
