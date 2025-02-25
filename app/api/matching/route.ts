@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isValidApiKey } from '../auth/keys';
+import { validateApiKey } from '@/lib/api-keys';
 
 // Define types for our API
-interface Player {
+export interface Player {
   id: string;
   interests?: string[];
   communicationStyle?: string;
@@ -15,14 +16,14 @@ interface Player {
   [key: string]: any; // Allow for additional properties
 }
 
-interface MatchingRequest {
+export interface MatchingRequest {
   apiKey: string;
   players: Player[];
   groupSize: number;
   optimizationGoal: 'social' | 'skill' | 'balanced';
 }
 
-interface CompatibilityFactors {
+export interface CompatibilityFactors {
   interests?: string;
   communicationStyle?: string;
   playTimes?: string;
@@ -30,7 +31,7 @@ interface CompatibilityFactors {
   [key: string]: string | undefined;
 }
 
-interface Group {
+export interface Group {
   groupId: string;
   players: string[];
   compatibilityScore: number;
@@ -38,14 +39,14 @@ interface Group {
   compatibilityFactors: CompatibilityFactors;
 }
 
-interface MatchingResponse {
+export interface MatchingResponse {
   groups: Group[];
   timestamp: string;
   quality: number;
 }
 
 // Simple function to calculate compatibility between two players
-function calculateCompatibility(player1: Player, player2: Player): number {
+export function calculateCompatibility(player1: Player, player2: Player): number {
   let score = 0;
   
   // Interest overlap
@@ -79,7 +80,7 @@ function calculateCompatibility(player1: Player, player2: Player): number {
 }
 
 // Enhanced function to create player groups with better mixing
-function createOptimizedGroups(players: Player[], groupSize: number): Group[] {
+export function createOptimizedGroups(players: Player[], groupSize: number): Group[] {
   const groups: Group[] = [];
   
   // Calculate compatibility matrix for all player pairs
@@ -206,7 +207,7 @@ function createOptimizedGroups(players: Player[], groupSize: number): Group[] {
 }
 
 // Helper function to determine compatibility level for a specific attribute
-function getCompatibilityLevel(players: Player[], attribute: string): string {
+export function getCompatibilityLevel(players: Player[], attribute: string): string {
   if (players.length <= 1) return 'medium';
   
   let similarity = 0;
@@ -274,8 +275,23 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Use our secure API key validation
-    if (!isValidApiKey(body.apiKey)) {
+    // Use our database API key validation
+    let isValidKey = false;
+    
+    // First try the database validation
+    try {
+      isValidKey = await validateApiKey(body.apiKey);
+    } catch (error) {
+      console.error('Error validating API key with database:', error);
+    }
+    
+    // If database validation fails, fall back to static validation for test keys
+    if (!isValidKey) {
+      isValidKey = isValidApiKey(body.apiKey);
+    }
+    
+    // If still not valid, reject the request
+    if (!isValidKey) {
       // Log the attempt but don't reveal which part of the validation failed
       console.warn(`Invalid API key attempt: ${body.apiKey.substring(0, 4)}****`);
       

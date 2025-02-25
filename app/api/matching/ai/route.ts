@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isValidApiKey } from '../../auth/keys';
+import { validateApiKey } from '@/lib/api-keys';
 import { generatePlayerGroups } from '@/lib/openai';
 import { createPlayerGroups } from '@/lib/matching';
 
@@ -62,8 +63,23 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Use our secure API key validation
-    if (!isValidApiKey(body.apiKey)) {
+    // Use our database API key validation
+    let isValidKey = false;
+    
+    // First try the database validation
+    try {
+      isValidKey = await validateApiKey(body.apiKey);
+    } catch (error) {
+      console.error('Error validating API key with database:', error);
+    }
+    
+    // If database validation fails, fall back to static validation for test keys
+    if (!isValidKey) {
+      isValidKey = isValidApiKey(body.apiKey);
+    }
+    
+    // If still not valid, reject the request
+    if (!isValidKey) {
       // Log the attempt but don't reveal which part of the validation failed
       console.warn(`Invalid API key attempt: ${body.apiKey.substring(0, 4)}****`);
       
