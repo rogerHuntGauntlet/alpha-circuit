@@ -3,21 +3,9 @@ import { isValidApiKey } from '../../auth/keys';
 import { validateApiKey } from '@/lib/api-keys';
 import { generatePlayerGroups } from '@/lib/openai';
 import { createPlayerGroups } from '@/lib/matching';
+import { Player, Group, CompatibilityFactors } from '@/app/lib/matching-utils';
 
-// Define types for our API
-interface Player {
-  id: string;
-  interests?: string[];
-  communicationStyle?: string;
-  platformPreference?: string;
-  playTimes?: string[];
-  language?: string;
-  skillLevel?: number;
-  contentTolerance?: number;
-  themePreference?: string;
-  [key: string]: any; // Allow for additional properties
-}
-
+// Define additional types specific to AI matching
 interface MatchingRequest {
   apiKey: string;
   players: Player[];
@@ -25,25 +13,12 @@ interface MatchingRequest {
   optimizationGoal: 'social' | 'skill' | 'balanced';
 }
 
-interface CompatibilityFactors {
-  interests?: string;
-  communicationStyle?: string;
-  playTimes?: string;
-  skillLevel?: string;
-  [key: string]: string | undefined;
-}
-
-interface Group {
-  groupId: string;
-  players: string[];
-  compatibilityScore: number;
-  commonInterests: string[];
-  compatibilityFactors: CompatibilityFactors;
+interface AIGroup extends Group {
   riskFactors?: string[];
 }
 
 interface MatchingResponse {
-  groups: Group[];
+  groups: AIGroup[];
   timestamp: string;
   quality: number;
   aiPowered: boolean;
@@ -130,7 +105,7 @@ export async function POST(request: NextRequest) {
     
     console.log('Processing AI matching request with players:', JSON.stringify(players, null, 2));
     
-    let groups: Group[] = [];
+    let groups: AIGroup[] = [];
     let aiPowered = true;
     
     try {

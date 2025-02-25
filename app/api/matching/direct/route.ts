@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Player, Group, calculateCompatibility, getCompatibilityLevel, createOptimizedGroups } from '../route';
+import { Player, Group, calculateCompatibility, getCompatibilityLevel, createOptimizedGroups } from '@/app/lib/matching-utils';
 
 // Sample players for testing
 const samplePlayers: Player[] = [
