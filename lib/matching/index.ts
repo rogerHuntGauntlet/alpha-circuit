@@ -47,7 +47,7 @@ export function calculateCompatibility(player1: PlayerProfile, player2: PlayerPr
 }
 
 /**
- * Basic matching algorithm for player grouping
+ * Enhanced matching algorithm for player grouping
  * 
  * This is a fallback if the OpenAI-based algorithm fails.
  */
@@ -73,8 +73,9 @@ export function createPlayerGroups(
   
   // Create groups based on optimization goal
   const groups: PlayerGroup[] = [];
-  const remainingPlayers = [...players];
+  let remainingPlayers = [...players];
   
+  // While we have enough players to form a group
   while (remainingPlayers.length >= groupSize) {
     let selectedPlayers: PlayerProfile[];
     
@@ -85,27 +86,31 @@ export function createPlayerGroups(
       // For skill balance, create teams with similar average skill
       selectedPlayers = selectSkillBalancedGroup(remainingPlayers, groupSize);
     } else {
-      // For balanced approach, consider both factors
-      selectedPlayers = selectBalancedGroup(remainingPlayers, compatibilityMatrix, groupSize);
+      // For balanced approach, use our enhanced algorithm
+      selectedPlayers = selectEnhancedBalancedGroup(remainingPlayers, compatibilityMatrix, groupSize);
     }
     
     // Remove selected players from the pool
     for (const player of selectedPlayers) {
       const index = remainingPlayers.findIndex(p => p.id === player.id);
-      remainingPlayers.splice(index, 1);
+      if (index !== -1) {
+        remainingPlayers.splice(index, 1);
+      }
     }
     
     // Calculate group compatibility score
     let groupScore = 0;
+    let pairCount = 0;
+    
     for (let i = 0; i < selectedPlayers.length; i++) {
       for (let j = i + 1; j < selectedPlayers.length; j++) {
         groupScore += compatibilityMatrix[selectedPlayers[i].id][selectedPlayers[j].id];
+        pairCount++;
       }
     }
     
     // Average the score
-    const pairCount = (selectedPlayers.length * (selectedPlayers.length - 1)) / 2;
-    groupScore = Math.round(groupScore / pairCount);
+    const compatibilityScore = pairCount > 0 ? Math.round(groupScore / pairCount) : 50;
     
     // Identify potential risk factors
     const riskFactors: string[] = [];
@@ -141,8 +146,17 @@ export function createPlayerGroups(
     // Add group to results
     groups.push({
       players: selectedPlayers.map(p => p.id),
-      compatibilityScore: groupScore,
+      compatibilityScore,
       riskFactors
+    });
+  }
+  
+  // Handle remaining players if any (less than groupSize)
+  if (remainingPlayers.length > 0) {
+    groups.push({
+      players: remainingPlayers.map(p => p.id),
+      compatibilityScore: 50, // Default score for incomplete group
+      riskFactors: ['Incomplete group']
     });
   }
   
@@ -224,15 +238,93 @@ function selectSkillBalancedGroup(
   return selectedPlayers;
 }
 
+/**
+ * Enhanced balanced group selection that considers multiple factors
+ * This provides better mixing of players than the simple 50/50 approach
+ */
+function selectEnhancedBalancedGroup(
+  players: PlayerProfile[],
+  compatibilityMatrix: Record<string, Record<string, number>>,
+  groupSize: number
+): PlayerProfile[] {
+  // Start with a random player
+  const randomIndex = Math.floor(Math.random() * players.length);
+  const firstPlayer = players[randomIndex];
+  const selectedPlayers = [firstPlayer];
+  
+  // Create a copy of players without the first player
+  const candidatePlayers = players.filter(p => p.id !== firstPlayer.id);
+  
+  // Add players with a mix of compatibility and skill balance
+  while (selectedPlayers.length < groupSize && candidatePlayers.length > 0) {
+    // Calculate current group's average skill
+    const currentAvgSkill = selectedPlayers.reduce((sum, p) => sum + p.skillLevel, 0) / selectedPlayers.length;
+    
+    // Find the best candidate based on a weighted score
+    let bestCandidate: PlayerProfile | null = null;
+    let bestScore = -Infinity;
+    
+    for (let i = 0; i < candidatePlayers.length; i++) {
+      const candidate = candidatePlayers[i];
+      
+      // Calculate social compatibility (average with current group)
+      let compatibilityScore = 0;
+      for (const selectedPlayer of selectedPlayers) {
+        compatibilityScore += compatibilityMatrix[selectedPlayer.id][candidate.id];
+      }
+      compatibilityScore /= selectedPlayers.length;
+      
+      // Calculate skill balance factor (how well this balances the group)
+      // Lower difference is better
+      const skillDifference = Math.abs(candidate.skillLevel - currentAvgSkill);
+      const skillBalanceScore = 100 - (skillDifference * 10);
+      
+      // Calculate interest diversity (how many new interests this adds)
+      const currentInterests = new Set();
+      selectedPlayers.forEach(p => p.interests.forEach(i => currentInterests.add(i)));
+      const newInterests = candidate.interests.filter(i => !currentInterests.has(i)).length;
+      const interestDiversityScore = newInterests * 5;
+      
+      // Calculate time compatibility
+      const timeOverlap = candidate.playTimes.filter(t => 
+        selectedPlayers.some(p => p.playTimes.includes(t))
+      ).length;
+      const timeCompatibilityScore = timeOverlap * 5;
+      
+      // Calculate weighted score based on optimization goal
+      // For balanced, we weight everything equally
+      const totalScore = 
+        (compatibilityScore * 0.4) + 
+        (skillBalanceScore * 0.3) + 
+        (interestDiversityScore * 0.2) + 
+        (timeCompatibilityScore * 0.1);
+      
+      if (totalScore > bestScore) {
+        bestScore = totalScore;
+        bestCandidate = candidate;
+      }
+    }
+    
+    if (bestCandidate) {
+      selectedPlayers.push(bestCandidate);
+      // Remove the selected candidate from the pool
+      const index = candidatePlayers.findIndex(p => p.id === bestCandidate!.id);
+      candidatePlayers.splice(index, 1);
+    } else {
+      // Fallback - should never happen but just in case
+      break;
+    }
+  }
+  
+  return selectedPlayers;
+}
+
+// Update the balanced group selection to use our enhanced algorithm
 function selectBalancedGroup(
   players: PlayerProfile[],
   compatibilityMatrix: Record<string, Record<string, number>>,
   groupSize: number
 ): PlayerProfile[] {
-  // This is a simple 50/50 mix of both approaches
-  if (Math.random() > 0.5) {
-    return selectSocialGroup(players, compatibilityMatrix, groupSize);
-  } else {
-    return selectSkillBalancedGroup(players, groupSize);
-  }
+  // Use our enhanced algorithm instead of the 50/50 approach
+  return selectEnhancedBalancedGroup(players, compatibilityMatrix, groupSize);
 } 

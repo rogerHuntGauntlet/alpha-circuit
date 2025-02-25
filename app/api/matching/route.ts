@@ -78,32 +78,84 @@ function calculateCompatibility(player1: Player, player2: Player): number {
   return Math.min(score, 100);
 }
 
-// Simple function to create player groups
-function createBasicGroups(players: Player[], groupSize: number): Group[] {
+// Enhanced function to create player groups with better mixing
+function createOptimizedGroups(players: Player[], groupSize: number): Group[] {
   const groups: Group[] = [];
   
-  // Create groups by simply chunking the players array
-  for (let i = 0; i < players.length; i += groupSize) {
-    const groupPlayers = players.slice(i, i + groupSize);
-    const playerIds = groupPlayers.map(p => p.id);
+  // Calculate compatibility matrix for all player pairs
+  const compatibilityMatrix: { [key: string]: { [key: string]: number } } = {};
+  
+  for (let i = 0; i < players.length; i++) {
+    compatibilityMatrix[players[i].id] = {};
+    for (let j = 0; j < players.length; j++) {
+      if (i !== j) {
+        compatibilityMatrix[players[i].id][players[j].id] = calculateCompatibility(players[i], players[j]);
+      }
+    }
+  }
+  
+  // Create a copy of players array to work with
+  let remainingPlayers = [...players];
+  
+  // While we have enough players to form a group
+  while (remainingPlayers.length >= groupSize) {
+    // Start a new group with a random player
+    const randomIndex = Math.floor(Math.random() * remainingPlayers.length);
+    const firstPlayer = remainingPlayers[randomIndex];
     
-    // Calculate average compatibility score for the group
+    // Remove the first player from remaining players
+    remainingPlayers.splice(randomIndex, 1);
+    
+    // Current group starts with the first player
+    const currentGroup = [firstPlayer];
+    
+    // Add the most compatible players to the group
+    while (currentGroup.length < groupSize && remainingPlayers.length > 0) {
+      let bestCompatibilityScore = -1;
+      let bestPlayerIndex = -1;
+      
+      // Find the player with highest average compatibility with current group
+      for (let i = 0; i < remainingPlayers.length; i++) {
+        const candidate = remainingPlayers[i];
+        let totalScore = 0;
+        
+        for (const groupMember of currentGroup) {
+          totalScore += compatibilityMatrix[groupMember.id][candidate.id];
+        }
+        
+        const averageScore = totalScore / currentGroup.length;
+        
+        if (averageScore > bestCompatibilityScore) {
+          bestCompatibilityScore = averageScore;
+          bestPlayerIndex = i;
+        }
+      }
+      
+      // Add the best player to the group
+      if (bestPlayerIndex !== -1) {
+        currentGroup.push(remainingPlayers[bestPlayerIndex]);
+        remainingPlayers.splice(bestPlayerIndex, 1);
+      }
+    }
+    
+    // Calculate group compatibility metrics
+    const playerIds = currentGroup.map(p => p.id);
     let totalScore = 0;
     let pairCount = 0;
     
-    for (let j = 0; j < groupPlayers.length; j++) {
-      for (let k = j + 1; k < groupPlayers.length; k++) {
-        totalScore += calculateCompatibility(groupPlayers[j], groupPlayers[k]);
+    for (let i = 0; i < currentGroup.length; i++) {
+      for (let j = i + 1; j < currentGroup.length; j++) {
+        totalScore += compatibilityMatrix[currentGroup[i].id][currentGroup[j].id];
         pairCount++;
       }
     }
     
-    const compatibilityScore = pairCount > 0 ? totalScore / pairCount : 50;
+    const compatibilityScore = pairCount > 0 ? Math.round(totalScore / pairCount) : 50;
     
     // Find common interests
     let commonInterests: string[] = [];
-    if (groupPlayers.length > 0) {
-      const allInterests = groupPlayers.map(p => p.interests || []);
+    if (currentGroup.length > 0) {
+      const allInterests = currentGroup.map(p => p.interests || []);
       if (allInterests.length > 0 && allInterests[0].length > 0) {
         commonInterests = [...allInterests[0]];
         for (let j = 1; j < allInterests.length; j++) {
@@ -114,11 +166,33 @@ function createBasicGroups(players: Player[], groupSize: number): Group[] {
       }
     }
     
+    // Calculate compatibility factors
+    const compatibilityFactors: CompatibilityFactors = {
+      interests: getCompatibilityLevel(currentGroup, 'interests'),
+      communicationStyle: getCompatibilityLevel(currentGroup, 'communicationStyle'),
+      playTimes: getCompatibilityLevel(currentGroup, 'playTimes'),
+      skillLevel: getCompatibilityLevel(currentGroup, 'skillLevel')
+    };
+    
+    // Add the group
     groups.push({
       groupId: `group${groups.length + 1}`,
       players: playerIds,
       compatibilityScore,
       commonInterests,
+      compatibilityFactors
+    });
+  }
+  
+  // Handle remaining players if any (less than groupSize)
+  if (remainingPlayers.length > 0) {
+    const playerIds = remainingPlayers.map(p => p.id);
+    
+    groups.push({
+      groupId: `group${groups.length + 1}`,
+      players: playerIds,
+      compatibilityScore: 50, // Default score for incomplete group
+      commonInterests: [],
       compatibilityFactors: {
         interests: 'medium',
         communicationStyle: 'medium',
@@ -129,6 +203,61 @@ function createBasicGroups(players: Player[], groupSize: number): Group[] {
   }
   
   return groups;
+}
+
+// Helper function to determine compatibility level for a specific attribute
+function getCompatibilityLevel(players: Player[], attribute: string): string {
+  if (players.length <= 1) return 'medium';
+  
+  let similarity = 0;
+  let totalComparisons = 0;
+  
+  for (let i = 0; i < players.length; i++) {
+    for (let j = i + 1; j < players.length; j++) {
+      totalComparisons++;
+      
+      if (attribute === 'interests') {
+        const player1Interests = players[i].interests || [];
+        const player2Interests = players[j].interests || [];
+        
+        const sharedInterests = player1Interests.filter(interest => 
+          player2Interests.includes(interest)
+        ).length;
+        
+        const maxInterests = Math.max(player1Interests.length, player2Interests.length);
+        similarity += maxInterests > 0 ? sharedInterests / maxInterests : 0;
+      } 
+      else if (attribute === 'playTimes') {
+        const player1Times = players[i].playTimes || [];
+        const player2Times = players[j].playTimes || [];
+        
+        const sharedTimes = player1Times.filter(time => 
+          player2Times.includes(time)
+        ).length;
+        
+        const maxTimes = Math.max(player1Times.length, player2Times.length);
+        similarity += maxTimes > 0 ? sharedTimes / maxTimes : 0;
+      }
+      else if (attribute === 'skillLevel') {
+        const player1Skill = players[i].skillLevel || 5;
+        const player2Skill = players[j].skillLevel || 5;
+        const skillDifference = Math.abs(player1Skill - player2Skill);
+        
+        // Convert to similarity (0-1 range)
+        similarity += Math.max(0, 1 - (skillDifference / 10));
+      }
+      else {
+        // For string attributes like communicationStyle
+        similarity += players[i][attribute] === players[j][attribute] ? 1 : 0;
+      }
+    }
+  }
+  
+  const averageSimilarity = similarity / totalComparisons;
+  
+  if (averageSimilarity >= 0.7) return 'high';
+  if (averageSimilarity >= 0.4) return 'medium';
+  return 'low';
 }
 
 // This is a simplified implementation of the matching API
@@ -196,15 +325,15 @@ export async function POST(request: NextRequest) {
     
     console.log('Processing matching request with players:', JSON.stringify(players, null, 2));
     
-    // Create groups using our simplified algorithm
-    const groups = createBasicGroups(players, groupSize);
+    // Create groups using our optimized algorithm instead of the basic one
+    const groups = createOptimizedGroups(players, groupSize);
     
     console.log('Created groups:', JSON.stringify(groups, null, 2));
     
     // Calculate overall quality score (0-100)
     const quality = groups.length > 0 
       ? Math.round(
-          groups.reduce((sum, group) => sum + group.compatibilityScore, 0) / groups.length * 100
+          groups.reduce((sum, group) => sum + group.compatibilityScore, 0) / groups.length
         )
       : 50;
     
