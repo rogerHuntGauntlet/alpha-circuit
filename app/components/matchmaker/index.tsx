@@ -21,9 +21,9 @@ export const MatchmakingVisualizer: React.FC<Props> = ({ groups, onGroupsUpdate 
   const analytics = useMemo(() => {
     return {
       averageCompatibility: currentGroups.reduce((acc, group) => 
-        acc + group.compatibilityScore, 0) / currentGroups.length,
+        acc + (group.compatibilityScore || 0), 0) / currentGroups.length,
       totalRiskFactors: currentGroups.reduce((acc, group) => 
-        acc + group.riskFactors.length, 0),
+        acc + (Array.isArray(group.riskFactors) ? group.riskFactors.length : 0), 0),
       groupCount: currentGroups.length,
     };
   }, [currentGroups]);
@@ -77,7 +77,7 @@ export const MatchmakingVisualizer: React.FC<Props> = ({ groups, onGroupsUpdate 
                 <div key={groupIndex} className={styles.group}>
                   <h3>Group {groupIndex + 1}</h3>
                   <div className={styles.groupStats}>
-                    <span>Compatibility: {group.compatibilityScore}%</span>
+                    <span>Compatibility: {group.compatibilityScore || 0}%</span>
                   </div>
                   <div className={styles.players}>
                     {group.players.map((playerId, playerIndex) => (
@@ -90,7 +90,7 @@ export const MatchmakingVisualizer: React.FC<Props> = ({ groups, onGroupsUpdate 
                       />
                     ))}
                   </div>
-                  {group.riskFactors.length > 0 && (
+                  {Array.isArray(group.riskFactors) && group.riskFactors.length > 0 && (
                     <div className={styles.riskFactors}>
                       <h4>Risk Factors:</h4>
                       <ul>
