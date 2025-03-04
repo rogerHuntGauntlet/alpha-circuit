@@ -1,10 +1,66 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { MatchmakingVisualizer } from '../components/matchmaker';
+import { PlayerModal } from '../components/PlayerModal';
+import { ScenarioHistory } from '../components/ScenarioHistory';
+
+// Random player generation utilities
+const randomFromArray = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+const generateRandomPlayer = () => {
+  const interests = ['rpg', 'strategy', 'fps', 'moba', 'mmorpg', 'sports', 'racing', 'puzzle', 'card games'];
+  const communicationStyles = ['quiet', 'moderate', 'chatty'];
+  const platforms = ['pc', 'console', 'mobile'];
+  const playTimes = ['morning', 'afternoon', 'evening', 'night', 'weekend'];
+  const languages = ['english', 'spanish', 'french', 'german', 'japanese'];
+  const themes = ['Action', 'Neutral', 'Soothing'];
+
+  // Generate 1-3 random interests
+  const numInterests = Math.floor(Math.random() * 3) + 1;
+  const selectedInterests = new Set<string>();
+  while (selectedInterests.size < numInterests) {
+    selectedInterests.add(randomFromArray(interests));
+  }
+
+  // Generate 1-2 random play times
+  const numPlayTimes = Math.floor(Math.random() * 2) + 1;
+  const selectedPlayTimes = new Set<string>();
+  while (selectedPlayTimes.size < numPlayTimes) {
+    selectedPlayTimes.add(randomFromArray(playTimes));
+  }
+
+  return {
+    id: `player${Date.now()}`,
+    interests: Array.from(selectedInterests),
+    communicationStyle: randomFromArray(communicationStyles),
+    platformPreference: randomFromArray(platforms),
+    playTimes: Array.from(selectedPlayTimes),
+    language: randomFromArray(languages),
+    skillLevel: Math.floor(Math.random() * 10) + 1,
+    contentTolerance: Math.floor(Math.random() * 10) + 1,
+    themePreference: randomFromArray(themes)
+  };
+};
+
+interface Scenario {
+  id: string;
+  timestamp: string;
+  request: {
+    players: any[];
+    groupSize: number;
+    optimizationGoal: string;
+    systemPrompt?: string;
+  };
+  response: {
+    aiPowered: boolean;
+    quality: number;
+    groups: any[];
+  };
+}
 
 export default function ApiPlayground() {
   const { data: session, status } = useSession();
@@ -26,39 +82,6 @@ export default function ApiPlayground() {
       "skillLevel": 7,
       "contentTolerance": 5,
       "themePreference": "Action"
-    },
-    {
-      "id": "player2",
-      "interests": ["fps", "moba"],
-      "communicationStyle": "quiet",
-      "platformPreference": "pc",
-      "playTimes": ["evening", "night"],
-      "language": "english",
-      "skillLevel": 9,
-      "contentTolerance": 8,
-      "themePreference": "Action"
-    },
-    {
-      "id": "player3",
-      "interests": ["rpg", "mmorpg"],
-      "communicationStyle": "chatty",
-      "platformPreference": "console",
-      "playTimes": ["weekend"],
-      "language": "spanish",
-      "skillLevel": 7,
-      "contentTolerance": 5,
-      "themePreference": "Neutral"
-    },
-    {
-      "id": "player4",
-      "interests": ["strategy", "card games"],
-      "communicationStyle": "moderate",
-      "platformPreference": "mobile",
-      "playTimes": ["morning", "evening"],
-      "language": "english",
-      "skillLevel": 6,
-      "contentTolerance": 4,
-      "themePreference": "Soothing"
     }
   ],
   "groupSize": 2,
@@ -66,6 +89,14 @@ export default function ApiPlayground() {
 }`);
   const [systemPrompt, setSystemPrompt] = useState('');
   const [showJson, setShowJson] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [scenarios, setScenarios] = useState<Scenario[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('matchmaking-scenarios');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
 
   // Fetch API key when session is available
   React.useEffect(() => {
@@ -73,6 +104,13 @@ export default function ApiPlayground() {
       fetchApiKey();
     }
   }, [status, session]);
+
+  // Save scenarios to localStorage whenever they change
+  useEffect(() => {
+    if (scenarios.length > 0) {
+      localStorage.setItem('matchmaking-scenarios', JSON.stringify(scenarios));
+    }
+  }, [scenarios]);
 
   const fetchApiKey = async () => {
     try {
@@ -124,6 +162,16 @@ export default function ApiPlayground() {
       }
       
       setResponse(data);
+
+      // Save the scenario
+      const newScenario: Scenario = {
+        id: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+        request: parsedBody,
+        response: data
+      };
+      setScenarios(prev => [newScenario, ...prev]);
+
     } catch (err: any) {
       console.error('Error in API call:', err);
       setError(err.message || 'An error occurred while processing your request');
@@ -140,6 +188,12 @@ export default function ApiPlayground() {
       // If it's not valid JSON, don't format it
       console.error('Invalid JSON:', err);
     }
+  };
+
+  const loadScenario = (scenario: Scenario) => {
+    setRequestBody(JSON.stringify(scenario.request, null, 2));
+    setSystemPrompt(scenario.request.systemPrompt || '');
+    setResponse(scenario.response);
   };
 
   return (
@@ -191,42 +245,14 @@ export default function ApiPlayground() {
           <div className="mb-8 bg-white shadow overflow-hidden sm:rounded-lg">
             <div className="px-4 py-5 sm:px-6">
               <h2 className="text-lg leading-6 font-medium text-gray-900">
-                Test the Circuit AI Matching API
+                API Playground
               </h2>
               <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                Use this playground to test our AI-powered matching service. Each request is processed through our advanced language model to create optimal matches based on player compatibility and your specific requirements.
+                Test our AI-powered matching service.
               </p>
-              <div className="mt-2 flex items-center text-sm text-gray-500">
-                <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-                </svg>
-                AI-powered matching provides enhanced group formation with compatibility analysis and risk assessment
-              </div>
             </div>
             
             <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
-              {status === 'unauthenticated' && (
-                <div className="mb-6 bg-yellow-50 p-4 rounded-md">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-yellow-800">
-                        You're not signed in
-                      </h3>
-                      <div className="mt-2 text-sm text-yellow-700">
-                        <p>
-                          Sign in to use your own API key and save your test results to your account.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
               <form onSubmit={handleSubmit}>
                 <div className="mb-6">
                   <label htmlFor="systemPrompt" className="block text-sm font-medium text-gray-700 mb-2">
@@ -252,6 +278,31 @@ export default function ApiPlayground() {
                   <label htmlFor="requestBody" className="block text-sm font-medium text-gray-700 mb-2">
                     Request Body
                   </label>
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          const currentBody = JSON.parse(requestBody);
+                          const newPlayer = generateRandomPlayer();
+                          currentBody.players = [...currentBody.players, newPlayer];
+                          setRequestBody(JSON.stringify(currentBody, null, 2));
+                        } catch (err) {
+                          setError('Failed to parse current request body');
+                        }
+                      }}
+                      className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                    >
+                      Add Random Player
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(true)}
+                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Create Player
+                    </button>
+                  </div>
                   <div className="relative">
                     <textarea
                       id="requestBody"
@@ -273,6 +324,21 @@ export default function ApiPlayground() {
                     Edit the JSON request body above to test different scenarios.
                   </p>
                 </div>
+                
+                <PlayerModal
+                  isOpen={isModalOpen}
+                  onClose={() => setIsModalOpen(false)}
+                  onSubmit={(player) => {
+                    try {
+                      const currentBody = JSON.parse(requestBody);
+                      currentBody.players = [...currentBody.players, player];
+                      setRequestBody(JSON.stringify(currentBody, null, 2));
+                      setIsModalOpen(false);
+                    } catch (err) {
+                      setError('Failed to parse current request body');
+                    }
+                  }}
+                />
                 
                 <div className="flex justify-end">
                   <button
@@ -322,7 +388,7 @@ export default function ApiPlayground() {
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Response</h3>
                   <div className="mb-4">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center">
+                      <div className="flex items-center space-x-4">
                         <div className={`mr-2 px-2 py-1 text-sm rounded-full ${
                           response.aiPowered 
                             ? 'bg-green-100 text-green-800' 
@@ -331,24 +397,20 @@ export default function ApiPlayground() {
                           {response.aiPowered ? 'AI-Powered Match' : 'Basic Algorithm Match'}
                         </div>
                         <div className="text-sm text-gray-500">
-                          Match Quality: {response.quality}%
+                          Overall Match Quality: {response.quality}%
                         </div>
                       </div>
-                      {response.groups && (
-                        <button
-                          onClick={() => setShowJson(!showJson)}
-                          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700"
-                        >
-                          {showJson ? 'Show Visual' : 'Show JSON'}
-                        </button>
-                      )}
+                      
                     </div>
                   </div>
                   
                   {response.groups && !showJson && (
                     <div className="mb-6">
                       <MatchmakingVisualizer 
-                        groups={response.groups}
+                        groups={response.groups.map((group: { compatibilityScore?: number }) => ({
+                          ...group,
+                          compatibilityScore: group.compatibilityScore || 0
+                        }))}
                         onGroupsUpdate={(newGroups) => {
                           setResponse({
                             ...response,
@@ -371,7 +433,44 @@ export default function ApiPlayground() {
             </div>
           </div>
           
+          {/* Scenario History */}
           <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+              <div>
+                <h2 className="text-lg leading-6 font-medium text-gray-900">
+                  Scenario History
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                  View and reload previous matchmaking scenarios.
+                </p>
+              </div>
+              {scenarios.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (confirm('Are you sure you want to clear all scenarios?')) {
+                      setScenarios([]);
+                      localStorage.removeItem('matchmaking-scenarios');
+                    }
+                  }}
+                  className="px-3 py-1 text-sm text-red-600 hover:text-red-800"
+                >
+                  Clear History
+                </button>
+              )}
+            </div>
+            
+            <div className="border-t border-gray-200">
+              <div className="px-4 py-5 sm:px-6">
+                <ScenarioHistory
+                  scenarios={scenarios}
+                  onLoadScenario={loadScenario}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* API Documentation */}
+          <div className="mt-8 bg-white shadow overflow-hidden sm:rounded-lg">
             <div className="px-4 py-5 sm:px-6">
               <h2 className="text-lg leading-6 font-medium text-gray-900">
                 API Documentation
