@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { MatchmakingVisualizer } from '../components/matchmaker';
 
 export default function ApiPlayground() {
   const { data: session, status } = useSession();
@@ -64,6 +65,7 @@ export default function ApiPlayground() {
   "optimizationGoal": "social"
 }`);
   const [systemPrompt, setSystemPrompt] = useState('');
+  const [showJson, setShowJson] = useState(false);
 
   // Fetch API key when session is available
   React.useEffect(() => {
@@ -319,24 +321,51 @@ export default function ApiPlayground() {
                 <div className="mt-6">
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Response</h3>
                   <div className="mb-4">
-                    <div className="flex items-center">
-                      <div className={`mr-2 px-2 py-1 text-sm rounded-full ${
-                        response.aiPowered 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {response.aiPowered ? 'AI-Powered Match' : 'Basic Algorithm Match'}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className={`mr-2 px-2 py-1 text-sm rounded-full ${
+                          response.aiPowered 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {response.aiPowered ? 'AI-Powered Match' : 'Basic Algorithm Match'}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Match Quality: {response.quality}%
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-500">
-                        Match Quality: {response.quality}%
-                      </div>
+                      {response.groups && (
+                        <button
+                          onClick={() => setShowJson(!showJson)}
+                          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700"
+                        >
+                          {showJson ? 'Show Visual' : 'Show JSON'}
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className="bg-gray-800 p-4 rounded-lg overflow-x-auto">
-                    <pre className="text-sm text-white whitespace-pre-wrap">
-                      {JSON.stringify(response, null, 2)}
-                    </pre>
-                  </div>
+                  
+                  {response.groups && !showJson && (
+                    <div className="mb-6">
+                      <MatchmakingVisualizer 
+                        groups={response.groups}
+                        onGroupsUpdate={(newGroups) => {
+                          setResponse({
+                            ...response,
+                            groups: newGroups
+                          });
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {showJson && (
+                    <div className="bg-gray-800 p-4 rounded-lg overflow-x-auto">
+                      <pre className="text-sm text-white whitespace-pre-wrap">
+                        {JSON.stringify(response, null, 2)}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

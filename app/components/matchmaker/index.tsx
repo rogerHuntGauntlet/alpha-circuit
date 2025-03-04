@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import type { PlayerGroup } from '../../../../lib/openai';
-import { PlayerCard } from './PlayerCard';
-import { AnalyticsPanel } from './AnalyticsPanel';
+import type { PlayerGroup } from '../../../lib/openai';
+import { PlayerCard } from '../PlayerCard';
+import { AnalyticsPanel } from '../AnalyticsPanel';
 import styles from './MatchmakingVisualizer.module.css';
 
 interface Props {
