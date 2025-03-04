@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import styles from './PlayerCard.module.css';
 
@@ -23,6 +23,8 @@ export const PlayerCard: React.FC<Props> = ({
   playerIndex,
   onSwap,
 }) => {
+  const ref = useRef<HTMLDivElement>(null);
+
   const [{ isDragging }, drag] = useDrag({
     type: 'PLAYER',
     item: { type: 'PLAYER', groupIndex, playerIndex, playerId },
@@ -48,9 +50,12 @@ export const PlayerCard: React.FC<Props> = ({
     }),
   });
 
+  // Combine drag and drop refs
+  drag(drop(ref));
+
   return (
     <div
-      ref={(node) => drag(drop(node))}
+      ref={ref}
       className={`${styles.playerCard} ${isDragging ? styles.dragging : ''} ${
         isOver ? styles.dropTarget : ''
       }`}
