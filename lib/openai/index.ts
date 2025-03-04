@@ -27,6 +27,7 @@ export type GroupingRequest = {
   players: PlayerProfile[];
   groupSize: number;
   optimizationGoal: 'social' | 'skill' | 'balanced';
+  systemPrompt?: string;
 };
 
 export type PlayerGroup = {
@@ -90,26 +91,34 @@ export async function generatePlayerGroups(request: GroupingRequest): Promise<Pl
       toxicityReports: p.pastBehavior?.toxicityReports || 0
     }));
 
+    // Create the base system prompt
+    const baseSystemPrompt = `You are an expert gaming matchmaking algorithm. Your task is to form optimal groups of players
+    based on their profiles and the requested optimization goal.
+    
+    Optimization Goals:
+    - 'social': Maximize social compatibility and minimize toxicity risk
+    - 'skill': Create balanced teams in terms of skill level
+    - 'balanced': Balance both social and skill factors
+    
+    For each group, provide:
+    1. The player IDs in the group
+    2. A compatibility score (0-100)
+    3. Any risk factors to be aware of
+    
+    Return your answer as a JSON array of groups.`;
+
+    // Combine base prompt with user's system prompt if provided
+    const systemPrompt = request.systemPrompt 
+      ? `${baseSystemPrompt}\n\nAdditional Requirements:\n${request.systemPrompt}`
+      : baseSystemPrompt;
+
     // Create a prompt for the OpenAI completion
     const response = await openai.chat.completions.create({
       model: 'gpt-4-turbo',
       messages: [
         {
           role: 'system',
-          content: `You are an expert gaming matchmaking algorithm. Your task is to form optimal groups of players
-          based on their profiles and the requested optimization goal.
-          
-          Optimization Goals:
-          - 'social': Maximize social compatibility and minimize toxicity risk
-          - 'skill': Create balanced teams in terms of skill level
-          - 'balanced': Balance both social and skill factors
-          
-          For each group, provide:
-          1. The player IDs in the group
-          2. A compatibility score (0-100)
-          3. Any risk factors to be aware of
-          
-          Return your answer as a JSON array of groups.`
+          content: systemPrompt
         },
         {
           role: 'user',

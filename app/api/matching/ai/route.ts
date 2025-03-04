@@ -11,6 +11,7 @@ interface MatchingRequest {
   players: Player[];
   groupSize: number;
   optimizationGoal: 'social' | 'skill' | 'balanced';
+  systemPrompt?: string;
 }
 
 interface AIGroup extends Group {
@@ -113,7 +114,8 @@ export async function POST(request: NextRequest) {
       const aiGroups = await generatePlayerGroups({
         players,
         groupSize,
-        optimizationGoal
+        optimizationGoal,
+        systemPrompt: body.systemPrompt
       });
       
       // Convert AI groups to our API format

@@ -392,14 +392,22 @@ export default function DashboardPage() {
                   Your personal API key for integrating with Circuit.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={generateNewApiKey}
-                disabled={isGeneratingKey || status === 'unauthenticated'}
-                className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${isGeneratingKey || status === 'unauthenticated' ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
-              >
-                {isGeneratingKey ? 'Generating...' : 'Generate New Key'}
-              </button>
+              <div className="flex items-center space-x-4">
+                <Link
+                  href="/playground"
+                  className="inline-flex items-center px-4 py-2 border border-indigo-600 text-sm font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Try API Playground
+                </Link>
+                <button
+                  type="button"
+                  onClick={generateNewApiKey}
+                  disabled={isGeneratingKey || status === 'unauthenticated'}
+                  className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${isGeneratingKey || status === 'unauthenticated' ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+                >
+                  {isGeneratingKey ? 'Generating...' : 'Generate New Key'}
+                </button>
+              </div>
             </div>
             <div className="border-t border-gray-200">
               <dl>

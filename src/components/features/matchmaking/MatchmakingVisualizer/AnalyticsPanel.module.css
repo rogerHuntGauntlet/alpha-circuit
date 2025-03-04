@@ -1,0 +1,80 @@
+.analyticsPanel {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.analyticsPanel h3 {
+  color: #2d3748;
+  margin: 0 0 1.5rem;
+  font-size: 1.2rem;
+}
+
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.statItem label {
+  font-size: 0.9rem;
+  color: #718096;
+  font-weight: 500;
+}
+
+.statValue {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+}
+
+.progressBar {
+  height: 8px;
+  background: #48bb78;
+  border-radius: 4px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.statValue span {
+  font-weight: 600;
+  color: #2d3748;
+  min-width: 3rem;
+  text-align: right;
+}
+
+.riskIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #f7fafc;
+  color: #718096;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.hasRisks {
+  background: #fed7d7;
+  color: #e53e3e;
+}
+
+.groupCount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2d3748;
+  text-align: center;
+  min-width: 2.5rem;
+  padding: 0.25rem 0.5rem;
+  background: #f7fafc;
+  border-radius: 6px;
+} 
