@@ -12,11 +12,11 @@ import { ScenarioHistory } from '../components/ScenarioHistory';
 const randomFromArray = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 const generateRandomPlayer = () => {
-  const interests = ['rpg', 'strategy', 'fps', 'moba', 'mmorpg', 'sports', 'racing', 'puzzle', 'card games'];
+  const interests = ['RPG', 'Strategy', 'FPS', 'MOBA', 'MMORPG', 'Sports', 'Racing', 'Puzzle', 'Card Games'];
   const communicationStyles = ['quiet', 'moderate', 'chatty'];
-  const platforms = ['pc', 'console', 'mobile'];
+  const platforms = ['PC', 'Console', 'Mobile'];
   const playTimes = ['morning', 'afternoon', 'evening', 'night', 'weekend'];
-  const languages = ['english', 'spanish', 'french', 'german', 'japanese'];
+  const languages = ['en', 'es', 'fr', 'de', 'ja'];
   const themes = ['Action', 'Neutral', 'Soothing'];
 
   // Generate 1-3 random interests
@@ -74,11 +74,11 @@ export default function ApiPlayground() {
   "players": [
     {
       "id": "player1",
-      "interests": ["rpg", "strategy"],
+      "interests": ["RPG", "Strategy"],
       "communicationStyle": "chatty",
-      "platformPreference": "pc",
+      "platformPreference": "PC",
       "playTimes": ["evening", "weekend"],
-      "language": "english",
+      "language": "en",
       "skillLevel": 7,
       "contentTolerance": 5,
       "themePreference": "Action"
@@ -284,6 +284,10 @@ export default function ApiPlayground() {
                       onClick={() => {
                         try {
                           const currentBody = JSON.parse(requestBody);
+                          if (currentBody.players.length >= 20) {
+                            setError('Maximum of 20 players allowed');
+                            return;
+                          }
                           const newPlayer = generateRandomPlayer();
                           currentBody.players = [...currentBody.players, newPlayer];
                           setRequestBody(JSON.stringify(currentBody, null, 2));
@@ -297,11 +301,58 @@ export default function ApiPlayground() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setIsModalOpen(true)}
+                      onClick={() => {
+                        try {
+                          const currentBody = JSON.parse(requestBody);
+                          if (currentBody.players.length >= 20) {
+                            setError('Maximum of 20 players allowed');
+                            return;
+                          }
+                          setIsModalOpen(true);
+                        } catch (err) {
+                          setError('Failed to parse current request body');
+                        }
+                      }}
                       className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                     >
                       Create Player
                     </button>
+                    <select
+                      onChange={(e) => {
+                        try {
+                          const currentBody = JSON.parse(requestBody);
+                          currentBody.groupSize = parseInt(e.target.value);
+                          setRequestBody(JSON.stringify(currentBody, null, 2));
+                        } catch (err) {
+                          setError('Failed to parse current request body');
+                        }
+                      }}
+                      className="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700"
+                      defaultValue="2"
+                    >
+                      {[2, 3, 4, 5].map((size) => (
+                        <option key={size} value={size}>
+                          Group Size: {size}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      onChange={(e) => {
+                        try {
+                          const currentBody = JSON.parse(requestBody);
+                          currentBody.optimizationGoal = e.target.value;
+                          setRequestBody(JSON.stringify(currentBody, null, 2));
+                        } catch (err) {
+                          setError('Failed to parse current request body');
+                        }
+                      }}
+                      className="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700"
+                      defaultValue="social"
+                    >
+                      <option value="social">Social Optimization</option>
+                      <option value="skill">Skill Optimization</option>
+                      <option value="balanced">Balanced Optimization</option>
+                    </select>
                   </div>
                   <div className="relative">
                     <textarea
