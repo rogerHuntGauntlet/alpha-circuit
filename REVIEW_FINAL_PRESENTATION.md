@@ -1,5 +1,8 @@
 # Circuit - Final Project Review
 
+https://github.com/rogerHuntGauntlet/alpha-circuit.git
+https://share.vidyard.com/watch/qJJrU4mtXAPKttaqjcXUqj?
+
 ## 1. AI-First Coding Framework (Score: 4.5/5)
 
 ### Framework Implementation

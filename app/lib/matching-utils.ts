@@ -33,12 +33,26 @@ export interface Group {
   compatibilityScore: number;
   commonInterests: string[];
   compatibilityFactors: CompatibilityFactors;
+  riskFactors?: string[];
+}
+
+export interface AlgorithmStatus {
+  type: 'ai' | 'optimized' | 'basic';
+  success: boolean;
+  error?: {
+    code: string;
+    message: string;
+  };
 }
 
 export interface MatchingResponse {
   groups: Group[];
   timestamp: string;
   quality: number;
+  algorithmStatus: {
+    attempted: AlgorithmStatus[];
+    final: AlgorithmStatus['type'];
+  };
 }
 
 // Simple function to calculate compatibility between two players
