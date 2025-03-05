@@ -3,7 +3,7 @@ import { isValidApiKey } from '../../auth/keys';
 import { validateApiKey } from '@/lib/api-keys';
 import { generatePlayerGroups } from '@/lib/openai';
 import { createPlayerGroups } from '@/lib/matching';
-import { Player, Group, CompatibilityFactors } from '@/app/lib/matching-utils';
+import { Player, Group, CompatibilityFactors, AlgorithmStatus, MatchingResponse as BaseMatchingResponse } from '@/app/lib/matching-utils';
 
 // Define additional types specific to AI matching
 interface MatchingRequest {
@@ -18,10 +18,7 @@ interface AIGroup extends Group {
   riskFactors?: string[];
 }
 
-interface MatchingResponse {
-  groups: AIGroup[];
-  timestamp: string;
-  quality: number;
+interface MatchingResponse extends BaseMatchingResponse {
   aiPowered: boolean;
 }
 
@@ -108,15 +105,26 @@ export async function POST(request: NextRequest) {
     
     let groups: AIGroup[] = [];
     let aiPowered = true;
+    const attemptedAlgorithms: AlgorithmStatus[] = [];
+    let finalAlgorithm: AlgorithmStatus['type'] = 'basic';
     
     try {
       // Try to use OpenAI for enhanced matching
+      attemptedAlgorithms.push({
+        type: 'ai',
+        success: false
+      });
+      
       const aiGroups = await generatePlayerGroups({
         players,
         groupSize,
         optimizationGoal,
         systemPrompt: body.systemPrompt
       });
+      
+      // Update algorithm status to success
+      attemptedAlgorithms[0].success = true;
+      finalAlgorithm = 'ai';
       
       // Convert AI groups to our API format
       groups = aiGroups.map((group, index) => {
@@ -153,46 +161,96 @@ export async function POST(request: NextRequest) {
         };
       });
       
-    } catch (aiError) {
+    } catch (aiError: any) {
       console.error('Error using AI for matching, falling back to basic algorithm:', aiError);
       
-      // Fall back to basic algorithm
-      const fallbackGroups = createPlayerGroups(players, groupSize, optimizationGoal);
+      // Update algorithm status with error
+      attemptedAlgorithms[0].error = {
+        code: 'AI_MATCHING_FAILED',
+        message: aiError.message || 'Unknown AI error'
+      };
       
-      // Convert fallback groups to our API format
-      groups = fallbackGroups.map((group, index) => {
-        // Find common interests for the group
-        const groupPlayers = group.players.map(id => 
-          players.find((p: Player) => p.id === id)!
-        );
+      // Try optimized algorithm
+      attemptedAlgorithms.push({
+        type: 'optimized',
+        success: false
+      });
+      
+      try {
+        // Fall back to basic algorithm
+        const fallbackGroups = createPlayerGroups(players, groupSize, optimizationGoal);
         
-        let commonInterests: string[] = [];
-        if (groupPlayers.length > 0) {
-          const allInterests = groupPlayers.map(p => p.interests || []);
-          if (allInterests.length > 0 && allInterests[0].length > 0) {
-            commonInterests = [...allInterests[0]];
-            for (let j = 1; j < allInterests.length; j++) {
-              commonInterests = commonInterests.filter(interest => 
-                allInterests[j].includes(interest)
-              );
+        // Update algorithm status
+        attemptedAlgorithms[1].success = true;
+        finalAlgorithm = 'optimized';
+        
+        // Convert fallback groups to our API format
+        groups = fallbackGroups.map((group, index) => {
+          // Find common interests for the group
+          const groupPlayers = group.players.map(id => 
+            players.find((p: Player) => p.id === id)!
+          );
+          
+          let commonInterests: string[] = [];
+          if (groupPlayers.length > 0) {
+            const allInterests = groupPlayers.map(p => p.interests || []);
+            if (allInterests.length > 0 && allInterests[0].length > 0) {
+              commonInterests = [...allInterests[0]];
+              for (let j = 1; j < allInterests.length; j++) {
+                commonInterests = commonInterests.filter(interest => 
+                  allInterests[j].includes(interest)
+                );
+              }
             }
           }
-        }
-        
-        return {
-          groupId: `group${index + 1}`,
-          players: group.players,
-          compatibilityScore: group.compatibilityScore,
-          commonInterests,
-          compatibilityFactors: {
-            interests: group.compatibilityScore > 80 ? 'high' : group.compatibilityScore > 50 ? 'medium' : 'low',
-            communicationStyle: 'medium',
-            playTimes: 'medium',
-            skillLevel: 'medium'
-          },
-          riskFactors: group.riskFactors
+          
+          return {
+            groupId: `group${index + 1}`,
+            players: group.players,
+            compatibilityScore: group.compatibilityScore,
+            commonInterests,
+            compatibilityFactors: {
+              interests: group.compatibilityScore > 80 ? 'high' : group.compatibilityScore > 50 ? 'medium' : 'low',
+              communicationStyle: 'medium',
+              playTimes: 'medium',
+              skillLevel: 'medium'
+            },
+            riskFactors: group.riskFactors
+          };
+        });
+      } catch (optimizedError: any) {
+        // Update algorithm status with error
+        attemptedAlgorithms[1].error = {
+          code: 'OPTIMIZED_MATCHING_FAILED',
+          message: optimizedError.message || 'Unknown optimization error'
         };
-      });
+        
+        // Add basic algorithm attempt
+        attemptedAlgorithms.push({
+          type: 'basic',
+          success: true
+        });
+        
+        // Implement a very basic fallback here
+        // This should never fail
+        groups = [];
+        for (let i = 0; i < players.length; i += groupSize) {
+          const groupPlayers = players.slice(i, Math.min(i + groupSize, players.length));
+          groups.push({
+            groupId: `group${groups.length + 1}`,
+            players: groupPlayers.map((p: Player) => p.id),
+            compatibilityScore: 50,
+            commonInterests: [],
+            compatibilityFactors: {
+              interests: 'low',
+              communicationStyle: 'low',
+              playTimes: 'low',
+              skillLevel: 'low'
+            },
+            riskFactors: ['Emergency basic matching used']
+          });
+        }
+      }
       
       aiPowered = false;
     }
@@ -209,7 +267,11 @@ export async function POST(request: NextRequest) {
       groups,
       timestamp: new Date().toISOString(),
       quality,
-      aiPowered
+      aiPowered,
+      algorithmStatus: {
+        attempted: attemptedAlgorithms,
+        final: finalAlgorithm
+      }
     };
     
     return NextResponse.json(response);
@@ -218,7 +280,21 @@ export async function POST(request: NextRequest) {
     console.error('Error processing matching request:', error);
     
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { 
+        error: 'Internal server error', 
+        message: error.message,
+        algorithmStatus: {
+          attempted: [{
+            type: 'basic',
+            success: false,
+            error: {
+              code: 'SYSTEM_ERROR',
+              message: error.message || 'Unknown system error'
+            }
+          }],
+          final: 'basic'
+        }
+      },
       { status: 500 }
     );
   }

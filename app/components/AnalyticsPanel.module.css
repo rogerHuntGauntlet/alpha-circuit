@@ -1,80 +1,136 @@
 .analyticsPanel {
-  background: white;
-  padding: 1.5rem;
+  background-color: #f8f9fa;
   border-radius: 8px;
+  padding: 16px;
+  margin-top: 20px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  width: 100%;
 }
 
 .analyticsPanel h3 {
-  color: #2d3748;
-  margin: 0 0 1.5rem;
-  font-size: 1.2rem;
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 18px;
+  color: #333;
 }
 
 .stats {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 16px;
 }
 
 .statItem {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 4px;
 }
 
 .statItem label {
-  font-size: 0.9rem;
-  color: #718096;
+  font-size: 14px;
+  color: #666;
   font-weight: 500;
 }
 
 .statValue {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  position: relative;
+  gap: 8px;
 }
 
 .progressBar {
   height: 8px;
-  background: #48bb78;
   border-radius: 4px;
-  transition: width 0.3s ease, background-color 0.3s ease;
-}
-
-.statValue span {
-  font-weight: 600;
-  color: #2d3748;
-  min-width: 3rem;
-  text-align: right;
+  flex-grow: 1;
 }
 
 .riskIndicator {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: #f7fafc;
-  color: #718096;
-  font-weight: 600;
-  transition: all 0.2s ease;
+  background-color: #e0e0e0;
+  color: #666;
+  font-size: 12px;
+  font-weight: bold;
 }
 
 .hasRisks {
-  background: #fed7d7;
-  color: #e53e3e;
+  background-color: #ffcc00;
+  color: #333;
 }
 
 .groupCount {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #2d3748;
-  text-align: center;
-  min-width: 2.5rem;
-  padding: 0.25rem 0.5rem;
-  background: #f7fafc;
-  border-radius: 6px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Algorithm status styles */
+.algorithmBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.ai {
+  background-color: #4caf50;
+  color: white;
+}
+
+.optimized {
+  background-color: #2196f3;
+  color: white;
+}
+
+.basic {
+  background-color: #ff9800;
+  color: white;
+}
+
+.algorithmAttempts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.attemptItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.attemptBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.success {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+
+.failed {
+  background-color: #ffebee;
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+}
+
+.errorCode {
+  font-size: 11px;
+  color: #c62828;
 } 

@@ -5,13 +5,22 @@ import type { PlayerGroup } from '../../../lib/openai';
 import { PlayerCard } from '../PlayerCard';
 import { AnalyticsPanel } from '../AnalyticsPanel';
 import styles from './MatchmakingVisualizer.module.css';
+import { AlgorithmStatus } from '@/app/lib/matching-utils';
 
 interface Props {
   groups: PlayerGroup[];
   onGroupsUpdate: (newGroups: PlayerGroup[]) => void;
+  algorithmStatus?: {
+    attempted: AlgorithmStatus[];
+    final: AlgorithmStatus['type'];
+  };
 }
 
-export const MatchmakingVisualizer: React.FC<Props> = ({ groups, onGroupsUpdate }) => {
+export const MatchmakingVisualizer: React.FC<Props> = ({ 
+  groups, 
+  onGroupsUpdate,
+  algorithmStatus 
+}) => {
   const [showJson, setShowJson] = useState(false);
   
   // Track the current groups state internally for drag and drop
@@ -25,8 +34,9 @@ export const MatchmakingVisualizer: React.FC<Props> = ({ groups, onGroupsUpdate 
       totalRiskFactors: currentGroups.reduce((acc, group) => 
         acc + (Array.isArray(group.riskFactors) ? group.riskFactors.length : 0), 0),
       groupCount: currentGroups.length,
+      algorithmStatus
     };
-  }, [currentGroups]);
+  }, [currentGroups, algorithmStatus]);
 
   // Handle player swaps between groups
   const handlePlayerSwap = (sourceGroupIndex: number, sourcePlayerIndex: number, 

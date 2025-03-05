@@ -100,7 +100,16 @@ export async function POST(request: NextRequest) {
     const response: MatchingResponse = {
       groups,
       timestamp: new Date().toISOString(),
-      quality
+      quality,
+      algorithmStatus: {
+        attempted: [
+          {
+            type: 'optimized',
+            success: true
+          }
+        ],
+        final: 'optimized'
+      }
     };
     
     return NextResponse.json(response);

@@ -59,6 +59,17 @@ interface Scenario {
     aiPowered: boolean;
     quality: number;
     groups: any[];
+    algorithmStatus?: {
+      attempted: Array<{
+        type: string;
+        success: boolean;
+        error?: {
+          code: string;
+          message: string;
+        };
+      }>;
+      final: string;
+    };
   };
 }
 
@@ -468,6 +479,7 @@ export default function ApiPlayground() {
                             groups: newGroups
                           });
                         }}
+                        algorithmStatus={response.algorithmStatus}
                       />
                     </div>
                   )}

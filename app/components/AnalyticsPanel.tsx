@@ -1,10 +1,15 @@
 import React from 'react';
 import styles from './AnalyticsPanel.module.css';
+import { AlgorithmStatus } from '@/app/lib/matching-utils';
 
 interface Analytics {
   averageCompatibility: number;
   totalRiskFactors: number;
   groupCount: number;
+  algorithmStatus?: {
+    attempted: AlgorithmStatus[];
+    final: AlgorithmStatus['type'];
+  };
 }
 
 interface Props {
@@ -50,6 +55,35 @@ export const AnalyticsPanel: React.FC<Props> = ({ analytics }) => {
             </span>
           </div>
         </div>
+        
+        {analytics.algorithmStatus && (
+          <div className={styles.statItem}>
+            <label>Algorithm Used</label>
+            <div className={styles.statValue}>
+              <span className={`${styles.algorithmBadge} ${styles[analytics.algorithmStatus.final]}`}>
+                {analytics.algorithmStatus.final.toUpperCase()}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {analytics.algorithmStatus && analytics.algorithmStatus.attempted.length > 1 && (
+          <div className={styles.statItem}>
+            <label>Algorithm Attempts</label>
+            <div className={styles.algorithmAttempts}>
+              {analytics.algorithmStatus.attempted.map((attempt, index) => (
+                <div key={index} className={styles.attemptItem}>
+                  <span className={`${styles.attemptBadge} ${attempt.success ? styles.success : styles.failed}`}>
+                    {attempt.type}
+                  </span>
+                  {attempt.error && (
+                    <span className={styles.errorCode}>{attempt.error.code}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
