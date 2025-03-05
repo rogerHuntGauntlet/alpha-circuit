@@ -12,6 +12,7 @@ interface MatchingRequest {
   groupSize: number;
   optimizationGoal: 'social' | 'skill' | 'balanced';
   systemPrompt?: string;
+  preferredAlgorithm?: 'ai' | 'optimized' | 'basic';
 }
 
 interface AIGroup extends Group {
@@ -100,88 +101,56 @@ export async function POST(request: NextRequest) {
     
     const groupSize: number = body.groupSize;
     const optimizationGoal: 'social' | 'skill' | 'balanced' = body.optimizationGoal;
+    const preferredAlgorithm = body.preferredAlgorithm || 'ai';
     
-    console.log('Processing AI matching request with players:', JSON.stringify(players, null, 2));
+    console.log(`Processing matching request with preferred algorithm: ${preferredAlgorithm}`);
     
     let groups: AIGroup[] = [];
-    let aiPowered = true;
+    let aiPowered = preferredAlgorithm === 'ai';
     const attemptedAlgorithms: AlgorithmStatus[] = [];
     let finalAlgorithm: AlgorithmStatus['type'] = 'basic';
     
-    try {
-      // Try to use OpenAI for enhanced matching
+    // If user specifically requested basic algorithm, skip AI and optimized
+    if (preferredAlgorithm === 'basic') {
+      console.log('Using basic algorithm as requested');
       attemptedAlgorithms.push({
-        type: 'ai',
-        success: false
+        type: 'basic',
+        success: true
       });
+      finalAlgorithm = 'basic';
       
-      const aiGroups = await generatePlayerGroups({
-        players,
-        groupSize,
-        optimizationGoal,
-        systemPrompt: body.systemPrompt
-      });
-      
-      // Update algorithm status to success
-      attemptedAlgorithms[0].success = true;
-      finalAlgorithm = 'ai';
-      
-      // Convert AI groups to our API format
-      groups = aiGroups.map((group, index) => {
-        // Find common interests for the group
-        const groupPlayers = group.players.map(id => 
-          players.find((p: Player) => p.id === id)!
-        );
-        
-        let commonInterests: string[] = [];
-        if (groupPlayers.length > 0) {
-          const allInterests = groupPlayers.map(p => p.interests || []);
-          if (allInterests.length > 0 && allInterests[0].length > 0) {
-            commonInterests = [...allInterests[0]];
-            for (let j = 1; j < allInterests.length; j++) {
-              commonInterests = commonInterests.filter(interest => 
-                allInterests[j].includes(interest)
-              );
-            }
-          }
-        }
-        
-        return {
-          groupId: `group${index + 1}`,
-          players: group.players,
-          compatibilityScore: group.compatibilityScore,
-          commonInterests,
+      // Implement a very basic grouping algorithm
+      for (let i = 0; i < players.length; i += groupSize) {
+        const groupPlayers = players.slice(i, Math.min(i + groupSize, players.length));
+        groups.push({
+          groupId: `group${groups.length + 1}`,
+          players: groupPlayers.map((p: Player) => p.id),
+          compatibilityScore: 50, // Default medium compatibility
+          commonInterests: [],
           compatibilityFactors: {
-            interests: group.compatibilityScore > 80 ? 'high' : group.compatibilityScore > 50 ? 'medium' : 'low',
+            interests: 'medium',
             communicationStyle: 'medium',
             playTimes: 'medium',
             skillLevel: 'medium'
           },
-          riskFactors: group.riskFactors
-        };
-      });
-      
-    } catch (aiError: any) {
-      console.error('Error using AI for matching, falling back to basic algorithm:', aiError);
-      
-      // Update algorithm status with error
-      attemptedAlgorithms[0].error = {
-        code: 'AI_MATCHING_FAILED',
-        message: aiError.message || 'Unknown AI error'
-      };
-      
-      // Try optimized algorithm
+          riskFactors: ['Basic algorithm used - no sophisticated matching']
+        });
+      }
+    }
+    // If user specifically requested optimized algorithm, skip AI
+    else if (preferredAlgorithm === 'optimized') {
+      console.log('Using optimized algorithm as requested');
       attemptedAlgorithms.push({
         type: 'optimized',
         success: false
       });
       
       try {
-        // Fall back to basic algorithm
+        // Use optimized algorithm
         const fallbackGroups = createPlayerGroups(players, groupSize, optimizationGoal);
         
         // Update algorithm status
-        attemptedAlgorithms[1].success = true;
+        attemptedAlgorithms[0].success = true;
         finalAlgorithm = 'optimized';
         
         // Convert fallback groups to our API format
@@ -220,20 +189,21 @@ export async function POST(request: NextRequest) {
         });
       } catch (optimizedError: any) {
         // Update algorithm status with error
-        attemptedAlgorithms[1].error = {
+        attemptedAlgorithms[0].error = {
           code: 'OPTIMIZED_MATCHING_FAILED',
           message: optimizedError.message || 'Unknown optimization error'
         };
         
-        // Add basic algorithm attempt
+        console.error('Optimized algorithm failed, falling back to basic algorithm:', optimizedError);
+        
+        // Fall back to basic algorithm
         attemptedAlgorithms.push({
           type: 'basic',
           success: true
         });
+        finalAlgorithm = 'basic';
         
-        // Implement a very basic fallback here
-        // This should never fail
-        groups = [];
+        // Implement a very basic grouping algorithm
         for (let i = 0; i < players.length; i += groupSize) {
           const groupPlayers = players.slice(i, Math.min(i + groupSize, players.length));
           groups.push({
@@ -242,17 +212,168 @@ export async function POST(request: NextRequest) {
             compatibilityScore: 50,
             commonInterests: [],
             compatibilityFactors: {
-              interests: 'low',
-              communicationStyle: 'low',
-              playTimes: 'low',
-              skillLevel: 'low'
+              interests: 'medium',
+              communicationStyle: 'medium',
+              playTimes: 'medium',
+              skillLevel: 'medium'
             },
-            riskFactors: ['Emergency basic matching used']
+            riskFactors: ['Basic algorithm used - optimized algorithm failed']
           });
         }
       }
-      
-      aiPowered = false;
+    }
+    // Default: try AI first, then fall back to optimized, then basic
+    else {
+      console.log('Using AI algorithm as requested');
+      try {
+        // Try to use OpenAI for enhanced matching
+        attemptedAlgorithms.push({
+          type: 'ai',
+          success: false
+        });
+        
+        const aiGroups = await generatePlayerGroups({
+          players,
+          groupSize,
+          optimizationGoal,
+          systemPrompt: body.systemPrompt
+        });
+        
+        // Update algorithm status to success
+        attemptedAlgorithms[0].success = true;
+        finalAlgorithm = 'ai';
+        
+        // Convert AI groups to our API format
+        groups = aiGroups.map((group, index) => {
+          // Find common interests for the group
+          const groupPlayers = group.players.map(id => 
+            players.find((p: Player) => p.id === id)!
+          );
+          
+          let commonInterests: string[] = [];
+          if (groupPlayers.length > 0) {
+            const allInterests = groupPlayers.map(p => p.interests || []);
+            if (allInterests.length > 0 && allInterests[0].length > 0) {
+              commonInterests = [...allInterests[0]];
+              for (let j = 1; j < allInterests.length; j++) {
+                commonInterests = commonInterests.filter(interest => 
+                  allInterests[j].includes(interest)
+                );
+              }
+            }
+          }
+          
+          return {
+            groupId: `group${index + 1}`,
+            players: group.players,
+            compatibilityScore: group.compatibilityScore,
+            commonInterests,
+            compatibilityFactors: {
+              interests: group.compatibilityScore > 80 ? 'high' : group.compatibilityScore > 50 ? 'medium' : 'low',
+              communicationStyle: 'medium',
+              playTimes: 'medium',
+              skillLevel: 'medium'
+            },
+            riskFactors: group.riskFactors
+          };
+        });
+        
+      } catch (aiError: any) {
+        console.error('AI algorithm failed, falling back to optimized algorithm:', aiError);
+        
+        // Update algorithm status with error
+        attemptedAlgorithms[0].error = {
+          code: 'AI_MATCHING_FAILED',
+          message: aiError.message || 'Unknown AI error'
+        };
+        
+        // Try optimized algorithm
+        attemptedAlgorithms.push({
+          type: 'optimized',
+          success: false
+        });
+        
+        try {
+          // Fall back to optimized algorithm
+          const fallbackGroups = createPlayerGroups(players, groupSize, optimizationGoal);
+          
+          // Update algorithm status
+          attemptedAlgorithms[1].success = true;
+          finalAlgorithm = 'optimized';
+          
+          // Convert fallback groups to our API format
+          groups = fallbackGroups.map((group, index) => {
+            // Find common interests for the group
+            const groupPlayers = group.players.map(id => 
+              players.find((p: Player) => p.id === id)!
+            );
+            
+            let commonInterests: string[] = [];
+            if (groupPlayers.length > 0) {
+              const allInterests = groupPlayers.map(p => p.interests || []);
+              if (allInterests.length > 0 && allInterests[0].length > 0) {
+                commonInterests = [...allInterests[0]];
+                for (let j = 1; j < allInterests.length; j++) {
+                  commonInterests = commonInterests.filter(interest => 
+                    allInterests[j].includes(interest)
+                  );
+                }
+              }
+            }
+            
+            return {
+              groupId: `group${index + 1}`,
+              players: group.players,
+              compatibilityScore: group.compatibilityScore,
+              commonInterests,
+              compatibilityFactors: {
+                interests: group.compatibilityScore > 80 ? 'high' : group.compatibilityScore > 50 ? 'medium' : 'low',
+                communicationStyle: 'medium',
+                playTimes: 'medium',
+                skillLevel: 'medium'
+              },
+              riskFactors: group.riskFactors
+            };
+          });
+        } catch (optimizedError: any) {
+          console.error('Optimized algorithm failed, falling back to basic algorithm:', optimizedError);
+          
+          // Update algorithm status with error
+          attemptedAlgorithms[1].error = {
+            code: 'OPTIMIZED_MATCHING_FAILED',
+            message: optimizedError.message || 'Unknown optimization error'
+          };
+          
+          // Add basic algorithm attempt
+          attemptedAlgorithms.push({
+            type: 'basic',
+            success: true
+          });
+          finalAlgorithm = 'basic';
+          
+          // Implement a very basic fallback here
+          // This should never fail
+          groups = [];
+          for (let i = 0; i < players.length; i += groupSize) {
+            const groupPlayers = players.slice(i, Math.min(i + groupSize, players.length));
+            groups.push({
+              groupId: `group${groups.length + 1}`,
+              players: groupPlayers.map((p: Player) => p.id),
+              compatibilityScore: 50,
+              commonInterests: [],
+              compatibilityFactors: {
+                interests: 'low',
+                communicationStyle: 'low',
+                playTimes: 'low',
+                skillLevel: 'low'
+              },
+              riskFactors: ['Emergency basic matching used - all other algorithms failed']
+            });
+          }
+        }
+        
+        aiPowered = false;
+      }
     }
     
     // Calculate overall quality score (0-100)

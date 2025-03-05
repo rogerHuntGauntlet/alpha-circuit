@@ -1,18 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isValidApiKey } from '../auth/keys';
+import { isValidApiKey } from '../../auth/keys';
 import { validateApiKey } from '@/lib/api-keys';
-import { Player, Group, MatchingResponse, 
-  calculateCompatibility, getCompatibilityLevel, createOptimizedGroups } from '@/app/lib/matching-utils';
+import { Player, Group, MatchingResponse } from '@/app/lib/matching-utils';
 
-interface MatchingRequest {
-  apiKey: string;
-  players: Player[];
-  groupSize: number;
-  optimizationGoal: 'social' | 'skill' | 'balanced';
-  preferredAlgorithm?: 'optimized' | 'basic';
-}
-
-// This is a simplified implementation of the matching API
 export async function POST(request: NextRequest) {
   try {
     // Parse the request body
@@ -67,13 +57,6 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    if (!body.optimizationGoal || !['social', 'skill', 'balanced'].includes(body.optimizationGoal)) {
-      return NextResponse.json(
-        { error: 'optimizationGoal must be one of: social, skill, balanced' },
-        { status: 400 }
-      );
-    }
-    
     // Normalize player data
     const players = body.players.map((player: Player) => ({
       id: player.id || `player-${Math.random().toString(36).substring(2, 9)}`,
@@ -88,17 +71,12 @@ export async function POST(request: NextRequest) {
     }));
     
     const groupSize: number = body.groupSize;
-    const preferredAlgorithm = body.preferredAlgorithm || 'optimized';
     
-    console.log(`Processing matching request with preferred algorithm: ${preferredAlgorithm}`);
-    
-    let groups: Group[] = [];
-    
-    // If user specifically requested basic algorithm, use that
-    if (preferredAlgorithm === 'basic') {
-      console.log('Using basic algorithm as requested');
-      
+    console.log('Using basic algorithm as requested');
+
+    try {
       // Implement a very basic grouping algorithm
+      const groups: Group[] = [];
       for (let i = 0; i < players.length; i += groupSize) {
         const groupPlayers = players.slice(i, Math.min(i + groupSize, players.length));
         groups.push({
@@ -136,81 +114,24 @@ export async function POST(request: NextRequest) {
       };
       
       return NextResponse.json(response);
-    }
-    
-    // Otherwise, use the optimized algorithm
-    try {
-      console.log('Using optimized algorithm as requested');
-      
-      // Create optimized groups
-      groups = createOptimizedGroups(players, groupSize);
-      
-      // Calculate overall quality score (0-100)
-      const quality = groups.length > 0 
-        ? Math.round(
-            groups.reduce((sum, group) => sum + group.compatibilityScore, 0) / groups.length
-          )
-        : 50;
-      
-      // Return the response
-      const response: MatchingResponse = {
-        groups,
-        timestamp: new Date().toISOString(),
-        quality,
-        algorithmStatus: {
-          attempted: [
-            {
-              type: 'optimized',
-              success: true
-            }
-          ],
-          final: 'optimized'
-        }
-      };
-      
-      return NextResponse.json(response);
     } catch (error: any) {
-      console.error('Optimized algorithm failed, falling back to basic algorithm:', error);
+      console.error('Basic algorithm failed (this should never happen):', error);
       
-      // Fall back to basic algorithm
-      for (let i = 0; i < players.length; i += groupSize) {
-        const groupPlayers = players.slice(i, Math.min(i + groupSize, players.length));
-        groups.push({
-          groupId: `group${groups.length + 1}`,
-          players: groupPlayers.map((p: Player) => p.id),
-          compatibilityScore: 50,
-          commonInterests: [],
-          compatibilityFactors: {
-            interests: 'medium',
-            communicationStyle: 'medium',
-            playTimes: 'medium',
-            skillLevel: 'medium'
-          },
-          riskFactors: ['Basic algorithm used - optimized algorithm failed']
-        });
-      }
-      
-      // Calculate overall quality score (0-100)
-      const quality = 50;
-      
-      // Return the response
+      // Even if the basic algorithm fails, we'll return an empty group
+      // This is the absolute last resort
       const response: MatchingResponse = {
-        groups,
+        groups: [],
         timestamp: new Date().toISOString(),
-        quality,
+        quality: 0,
         algorithmStatus: {
           attempted: [
-            {
-              type: 'optimized',
-              success: false,
-              error: {
-                code: 'OPTIMIZED_MATCHING_FAILED',
-                message: error.message || 'Unknown optimization error'
-              }
-            },
             {
               type: 'basic',
-              success: true
+              success: false,
+              error: {
+                code: 'BASIC_MATCHING_FAILED',
+                message: error.message || 'Unknown basic algorithm error'
+              }
             }
           ],
           final: 'basic'
