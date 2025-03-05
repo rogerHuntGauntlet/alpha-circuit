@@ -500,9 +500,9 @@ export default function ApiPlayground() {
                               {(() => {
                                 try {
                                   // Count total players across all groups
-                                  const playerIds = new Set();
-                                  response.groups.forEach(group => {
-                                    group.players.forEach(id => playerIds.add(id));
+                                  const playerIds = new Set<string>();
+                                  response.groups.forEach((group: { players: string[] }) => {
+                                    group.players.forEach((id: string) => playerIds.add(id));
                                   });
                                   return playerIds.size;
                                 } catch (err) {
